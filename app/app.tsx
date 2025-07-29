@@ -1,7 +1,209 @@
-// --- ICONS ---
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Progress } from '../components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
+import { Slider } from '../components/ui/slider';
+import clsx from 'clsx';
 import {
   Play, Pause, RotateCcw, BarChart3, ChevronDown, Heart, Skull, Users, Dna, Clock, Zap, Settings, Apple, Eye, Plus, Minus, Flame, Brain, Shield, Activity, Target, Wind, Droplets, Moon, Sun, Stethoscope, MoonIcon, UserPlus2
 } from 'lucide-react';
+
+// --- TYPE DEFINITIONS ---
+type Gender = 'male' | 'female';
+type Occupation = 'none' | 'doctor' | 'gatherer' | 'scout' | 'guardian' | 'breeder' | 'scientist' | 'farmer';
+
+interface Genetics {
+  size: number;
+  speed: number;
+  fertility: number;
+  longevity: number;
+  aggression: number;
+  antennaSize: number;
+  eyeSize: number;
+  intelligence: number;
+  immunity: number;
+  heatResistance: number;
+  metabolism: number;
+  sociability: number;
+  camouflage: number;
+  isVampire: boolean;
+  vampireStrength: number;
+  color: {
+    hue: number;
+    saturation: number;
+    brightness: number;
+  };
+}
+
+interface Bumble {
+  id: string;
+  name: string;
+  gender: Gender;
+  genetics: Genetics;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  age: number;
+  maxAge: number;
+  generation: number;
+  isAlive: boolean;
+  reproductionCooldown: number;
+  energy: number;
+  maxEnergy: number;
+  health: number;
+  maxHealth: number;
+  thirst: number;
+  maxThirst: number;
+  lastReproduction: number;
+  wanderTarget: { x: number; y: number };
+  wanderTime: number;
+  fleeTime: number;
+  knownFoodSources: string[];
+  knownWaterSources: string[];
+  stress: number;
+  diseaseResistance: number;
+  temperature: number;
+  learningExperience: number;
+  isDiseasedSneezing: boolean;
+  lastSneeze: number;
+  vampireFeedCooldown: number;
+  occupation: Occupation;
+  medicalKnowledge: number;
+  lastMedicalAction: number;
+  chuddleId?: string;
+  lastChuddleInteraction: number;
+  mateId?: string;
+  targetFood?: string;
+  targetWater?: string;
+}
+
+interface Food {
+  id: string;
+  x: number;
+  y: number;
+  energy: number;
+  maxEnergy: number;
+  regrowthRate: number;
+  type: 'chumblebush' | 'chumbleberry' | 'golden_berry';
+  quality: number;
+  berryCount: number;
+  parentBushId?: string;
+}
+
+interface Fire {
+  id: string;
+  x: number;
+  y: number;
+  radius: number;
+  intensity: number;
+  duration: number;
+  maxDuration: number;
+}
+
+interface Water {
+    id: string;
+    x: number;
+    y: number;
+    radius: number;
+    capacity: number;
+    currentWater: number;
+    refillRate: number;
+}
+
+interface ChuddleGenetics {
+  size: number;
+  agility: number;
+  loyalty: number;
+  cuteness: number;
+  protectiveness: number;
+  healingPower: number;
+  color: {
+    hue: number;
+    saturation: number;
+    brightness: number;
+  };
+}
+
+interface Chuddle {
+  id: string;
+  name: string;
+  genetics: ChuddleGenetics;
+  ownerId: string;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  age: number;
+  maxAge: number;
+  generation: number;
+  isAlive: boolean;
+  energy: number;
+  maxEnergy: number;
+  stress: number;
+  lastHealing: number;
+  color?: string;
+  health?: number;
+}
+
+interface WorldSettings {
+    width: number;
+    height: number;
+    maxPopulation: number;
+    foodDensity: number;
+    diseaseRate: number;
+    weatherSeverity: number;
+    predatorPressure: number;
+    vampireChance: number;
+    nightCycleEnabled: boolean;
+    nightCycleDuration: number;
+    chuddlesEnabled: boolean;
+    chuddleSpawnChance: number;
+    darkMode: boolean;
+}
+
+interface SimulationStats {
+    generation: number;
+    population: number;
+    maleCount: number;
+    femaleCount: number;
+    vampireCount: number;
+    doctorCount: number;
+    chuddleCount: number;
+    totalBorn: number;
+    totalDeaths: number;
+    fireDeaths: number;
+    diseaseDeaths: number;
+    starvationDeaths: number;
+    dehydrationDeaths: number;
+    ageDeaths: number;
+    totalHealed: number;
+    averageAge: number;
+    averageSize: number;
+    averageSpeed: number;
+    averageFertility: number;
+    averageLongevity: number;
+    averageAntennaSize: number;
+    averageEyeSize: number;
+    averageIntelligence: number;
+    averageImmunity: number;
+    averageHeatResistance: number;
+    averageHealth: number;
+    averageStress: number;
+    averageThirst: number;
+    matedPairs: number;
+    overcrowdingDeaths: number;
+    foodSources: number;
+    waterSources: number;
+    totalFoodConsumed: number;
+    totalWaterConsumed: number;
+    activeFires: number;
+    avgLearningExperience: number;
+    nightTime: boolean;
+}
 
 // --- CONSTANTS ---
 const MALE_NAMES = [
@@ -15,33 +217,31 @@ const FEMALE_NAMES = [
   'Hope', 'Faith', 'Star', 'Gem', 'Bloom', 'Breeze', 'Glow', 'Shine', 'Dream', 'Angel'
 ];
 
-// --- INTERFACES ---
-interface Food {
-  id: string;
-  x: number;
-  y: number;
-  energy: number;
-  maxEnergy: number;
-  regrowthRate: number;
-  type: 'chumblebush' | 'chumbleberry' | 'golden_berry';
-  quality: number;
-  berryCount: number;
-  parentBushId?: string;
-}
-interface Fire {
-  id: string;
-  x: number;
-  y: number;
-  radius: number;
-  intensity: number;
-  duration: number;
-  maxDuration: number;
-}
-interface ChuddleGenetics {
-  size: number;
-  agility: number;
-  loyalty: number;
-  cuteness: number;
+const DEFAULT_CANVAS_WIDTH = 1000;
+const DEFAULT_CANVAS_HEIGHT = 700;
+const MOBILE_CANVAS_WIDTH = 400;
+const MOBILE_CANVAS_HEIGHT = 300;
+const TABLET_CANVAS_WIDTH = 800;
+const TABLET_CANVAS_HEIGHT = 600;
+
+const INITIAL_POPULATION = 4;
+const DEFAULT_MAX_POPULATION = 150;
+const FOOD_DENSITY = 0.0001;
+const BUMBLE_LIFESPAN = 120000; // 2 minutes
+const REPRODUCTION_COOLDOWN_BASE = 20000; // 20 seconds
+const OVERCROWDING_THRESHOLD = 200;
+const FIRE_DURATION = 30000; // 30 seconds
+const FIRE_SPREAD_CHANCE = 0.005;
+const VAMPIRE_FEED_COOLDOWN = 5000; // 5 seconds
+const DISEASE_SNEEZE_INTERVAL = 3000; // 3 seconds
+const CHUDDLE_LIFESPAN = 180000; // 3 minutes
+const MUTATION_RATE = 0.1;
+const MAJOR_MUTATION_RATE = 0.02;
+const THIRST_INCREASE_RATE = 0.05;
+const DEFAULT_REPRODUCTION_FREQ = 1.0;
+
+const usedNames = new Set<string>();
+
 function BumblesSimulator() {
   // --- State and refs (order matters for usage) ---
   const [gameStarted, setGameStarted] = useState(false);
@@ -49,7 +249,7 @@ function BumblesSimulator() {
   const [showSettings, setShowSettings] = useState(!gameStarted);
   const [simulationSpeed, setSimulationSpeed] = useState(1);
   const [reproductionFrequency, setReproductionFrequency] = useState(DEFAULT_REPRODUCTION_FREQ); // 1.0 = normal, <1 = less frequent, >1 = more frequent
-  const [environmentalFactors, setEnvironmentalFactors] = useState({ temperature: 20, humidity: 0.5, wind: 0.2 });
+  const [environmentalFactors, setEnvironmentalFactors] = useState({ temperature: 20, humidity: 50, windSpeed: 5 });
   const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [worldSettings, setWorldSettings] = useState<WorldSettings>({
     width: DEFAULT_CANVAS_WIDTH,
@@ -74,259 +274,7 @@ function BumblesSimulator() {
   const [selectedBumble, setSelectedBumble] = useState<string | null>(null);
   const [selectedBumbleInfo, setSelectedBumbleInfo] = useState<{x: number; y: number} | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [stats, setStats] = useState<SimulationStats>({
-    generation: 1,
-    population: 0,
-    maleCount: 0,
-    femaleCount: 0,
-    vampireCount: 0,
-    doctorCount: 0,
-    chuddleCount: 0,
-    totalBorn: 0,
-    totalDeaths: 0,
-    fireDeaths: 0,
-    diseaseDeaths: 0,
-    starvationDeaths: 0,
-    dehydrationDeaths: 0,
-    ageDeaths: 0,
-    totalHealed: 0,
-    averageAge: 0,
-    averageSize: 0,
-    averageSpeed: 0,
-    averageFertility: 0,
-    averageLongevity: 0,
-    averageAntennaSize: 0,
-    averageEyeSize: 0,
-    averageIntelligence: 0,
-    averageImmunity: 0,
-    averageHeatResistance: 0,
-    averageHealth: 0,
-    averageStress: 0,
-    averageThirst: 0,
-    matedPairs: 0,
-    overcrowdingDeaths: 0,
-    foodSources: 0,
-    waterSources: 0,
-    totalFoodConsumed: 0,
-    totalWaterConsumed: 0,
-    activeFires: 0,
-    avgLearningExperience: 0,
-    nightTime: false
-  });
-  // Canvas width/height for rendering
-  const canvasWidth = worldSettings.width;
-  const canvasHeight = worldSettings.height;
-  // --- Refs ---
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
-  const lastTimeRef = useRef<number>(0);
-  const nightCycleRef = useRef<number>(0);
-  const particlesRef = useRef<Array<{ id: string; x: number; y: number; vx: number; vy: number; life: number; maxLife: number; type: 'sneeze' | 'healing'; }>>([]);
-
-  // --- Adjustable Reproduction Cooldown ---
-  const getReproductionCooldown = () => REPRODUCTION_COOLDOWN_BASE / reproductionFrequency;
-
-  // --- Unique Name Generation ---
-  const getUniqueName = useCallback((gender: Gender): string => {
-    const namePool = gender === 'male' ? MALE_NAMES : FEMALE_NAMES;
-    const availableNames = namePool.filter(name => !usedNames.has(name));
-    if (availableNames.length === 0) {
-      return namePool[Math.floor(Math.random() * namePool.length)];
-    }
-    const name = availableNames[Math.floor(Math.random() * availableNames.length)];
-    usedNames.add(name);
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
-import { Progress } from '../components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
-import { Slider } from '../components/ui/slider';
-import clsx from 'clsx';
-import {
-  Play, Pause, RotateCcw, BarChart3, ChevronDown, Heart, Skull, Users, Dna, Clock, Zap, Settings, Apple, Eye, Plus, Minus, Flame, Brain, Shield, Activity, Target, Wind, Droplets, Moon, Sun, Stethoscope, MoonIcon, UserPlus2
-} from 'lucide-react';
-
-type Gender = 'male' | 'female';
-type Occupation = 'none' | 'doctor' | 'gatherer' | 'scout' | 'guardian' | 'breeder' | 'scientist' | 'farmer';
-const MALE_NAMES = [
-  'Buzz', 'Zap', 'Bingo', 'Zippy', 'Bouncer', 'Dash', 'Fizz', 'Spark', 'Wobble', 'Zoom',
-  'Bumpy', 'Zigzag', 'Bloop', 'Chirp', 'Pip', 'Zest', 'Bouncy', 'Whistle', 'Wiggle', 'Zing',
-  'Bubbles', 'Doodle', 'Flicker', 'Giggles', 'Hop', 'Jingle', 'Kick', 'Loop', 'Marble', 'Nibble'
-];
-const FEMALE_NAMES = [
-  'Bella', 'Daisy', 'Luna', 'Ruby', 'Ivy', 'Poppy', 'Rose', 'Lily', 'Sage', 'Willow',
-  'Iris', 'Fern', 'Clover', 'Honey', 'Pearl', 'Sky', 'Rain', 'Dawn', 'Grace', 'Joy',
-  'Hope', 'Faith', 'Star', 'Gem', 'Bloom', 'Breeze', 'Glow', 'Shine', 'Dream', 'Angel'
-];
-interface Food {
-  id: string;
-  x: number;
-  y: number;
-  energy: number;
-  maxEnergy: number;
-  regrowthRate: number;
-  type: 'chumblebush' | 'chumbleberry' | 'golden_berry';
-  quality: number;
-  berryCount: number;
-  parentBushId?: string;
-}
-interface Fire {
-  id: string;
-  x: number;
-  y: number;
-  radius: number;
-  intensity: number;
-  duration: number;
-  maxDuration: number;
-}
-interface ChuddleGenetics {
-  size: number;
-  agility: number;
-  loyalty: number;
-  cuteness: number;
-  protectiveness: number;
-  healingPower: number;
-  color: {
-    hue: number;
-    saturation: number;
-    brightness: number;
-  };
-}
-interface Chuddle {
-  id: string;
-  name: string;
-  genetics: ChuddleGenetics;
-  ownerId: string;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  age: number;
-  maxAge: number;
-  generation: number;
-  isAlive: boolean;
-  energy: number;
-  maxEnergy: number;
-  stress: number;
-  lastHealing: number;
-}
-  @media (max-width: 600px) {
-    .mobile-responsive {
-      font-size: 1.08rem;
-      padding: 0 !important;
-      min-height: 100dvh;
-    }
-    .mobile-top-controls {
-      gap: 0.5rem !important;
-      right: 0.5rem !important;
-      top: 0.5rem !important;
-    }
-    .mobile-main-area {
-      padding-top: 0.5rem !important;
-      padding-bottom: 0.5rem !important;
-      padding-left: 0.25rem !important;
-      padding-right: 0.25rem !important;
-    }
-    .mobile-canvas {
-      max-width: 100vw !important;
-      width: 100vw !important;
-      height: 60vw !important;
-      min-height: 220px !important;
-      border-radius: 10px !important;
-    }
-    .mobile-slider {
-      min-width: 120px !important;
-      max-width: 90vw !important;
-      height: 2.2rem !important;
-      touch-action: pan-x !important;
-    }
-    .mobile-btn, .mobile-toggle {
-      min-width: 44px !important;
-      min-height: 44px !important;
-      font-size: 1.1rem !important;
-      border-radius: 8px !important;
-      padding: 0.5rem 0.8rem !important;
-    }
-    .mobile-popup {
-      font-size: 1.05rem !important;
-      max-width: 96vw !important;
-      left: 2vw !important;
-      right: 2vw !important;
-      padding: 0.7rem 1rem !important;
-    }
-  }
-  `;
-
-  // Inject mobile styles on mount
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      let styleTag = document.getElementById("mobile-style");
-      if (!styleTag) {
-        styleTag = document.createElement("style");
-        styleTag.id = "mobile-style";
-        styleTag.innerHTML = mobileStyle;
-        document.head.appendChild(styleTag);
-      }
-    }
-  }, []);
-
-  // Add viewport meta tag for mobile scaling
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      let meta = document.querySelector('meta[name="viewport"]');
-      if (!meta) {
-        meta = document.createElement('meta');
-        meta.name = "viewport";
-        meta.content = "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no";
-        document.head.appendChild(meta);
-      }
-    }
-  }, []);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationRef = useRef<number>();
-  const lastTimeRef = useRef<number>(0);
-  const nightCycleRef = useRef<number>(0);
-  const particlesRef = useRef<Array<{
-    id: string;
-    x: number;
-    y: number;
-    vx: number;
-    vy: number;
-    life: number;
-    maxLife: number;
-    type: 'sneeze' | 'healing';
-  }>>([]);
-  
-  const [bumbles, setBumbles] = useState<Bumble[]>([]);
-  const [food, setFood] = useState<Food[]>([]);
-  const [fires, setFires] = useState<Fire[]>([]);
-  const [water, setWater] = useState<Water[]>([]);
-  const [selectedBumble, setSelectedBumble] = useState<string | null>(null);
-  const [selectedBumbleInfo, setSelectedBumbleInfo] = useState<{x: number; y: number} | null>(null);
-  const [isRunning, setIsRunning] = useState(false);
-  const [gameStarted, setGameStarted] = useState(false);
   const [interactionMode, setInteractionMode] = useState<'food' | 'fire' | 'water' | 'select' | 'add_male' | 'add_female'>('select');
-  
-  // Responsive canvas sizing
-  const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
-  const [worldSettings, setWorldSettings] = useState<WorldSettings>({
-    width: DEFAULT_CANVAS_WIDTH,
-    height: DEFAULT_CANVAS_HEIGHT,
-    maxPopulation: DEFAULT_MAX_POPULATION,
-    foodDensity: FOOD_DENSITY,
-    diseaseRate: 0.001,
-    weatherSeverity: 0.5,
-    predatorPressure: 0.2,
-    vampireChance: 0, // Start with no vampires
-    nightCycleEnabled: false,
-    nightCycleDuration: 60, // 1 minute cycles
-    chuddlesEnabled: false, // Start with Chuddles disabled
-    chuddleSpawnChance: 15, // 15% chance for Chuddles to appear
-    darkMode: false // Start with light mode
-  // end of render or useCallback function
-  
   const [stats, setStats] = useState<SimulationStats>({
     generation: 1,
     population: 0,
@@ -366,138 +314,39 @@ interface Chuddle {
     avgLearningExperience: 0,
     nightTime: false
   });
-  
-  const [showStats, setShowStats] = useState(false);
-  const [showSettings, setShowSettings] = useState(!gameStarted);
-  const [simulationSpeed, setSimulationSpeed] = useState(1);
-  const [environmentalFactors, setEnvironmentalFactors] = useState({
-    temperature: 20,
-    humidity: 50,
-    windSpeed: 5
-  });
+  // Canvas width/height for rendering
+  const canvasWidth = worldSettings.width;
+  const canvasHeight = worldSettings.height;
+  // --- Refs ---
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const animationRef = useRef<number>();
+  const lastTimeRef = useRef<number>(0);
+  const nightCycleRef = useRef<number>(0);
+  const particlesRef = useRef<Array<{ id: string; x: number; y: number; vx: number; vy: number; life: number; maxLife: number; type: 'sneeze' | 'healing'; }>>([]);
 
-  // Get unique name
+  // --- Adjustable Reproduction Cooldown ---
+  const getReproductionCooldown = () => REPRODUCTION_COOLDOWN_BASE / reproductionFrequency;
+
+  // --- Unique Name Generation ---
   const getUniqueName = useCallback((gender: Gender): string => {
     const namePool = gender === 'male' ? MALE_NAMES : FEMALE_NAMES;
     const availableNames = namePool.filter(name => !usedNames.has(name));
-    
     if (availableNames.length === 0) {
-      // If all names used, add suffix
-      const baseName = namePool[Math.floor(Math.random() * namePool.length)];
-      const suffix = Math.floor(Math.random() * 1000);
-      const uniqueName = `${baseName}${suffix}`;
-      usedNames.add(uniqueName);
-      return uniqueName;
+        const baseName = namePool[Math.floor(Math.random() * namePool.length)];
+        const suffix = Math.floor(Math.random() * 1000);
+        const uniqueName = `${baseName}${suffix}`;
+        usedNames.add(uniqueName);
+        return uniqueName;
     }
-    
     const name = availableNames[Math.floor(Math.random() * availableNames.length)];
     usedNames.add(name);
     return name;
   }, []);
 
-  // Free name when bumble dies
   const freeName = useCallback((name: string) => {
     usedNames.delete(name);
   }, []);
 
-  // Responsive design detection
-  useEffect(() => {
-    const updateScreenSize = () => {
-      const width = window.innerWidth;
-      if (width < 640) {
-        setScreenSize('mobile');
-        setWorldSettings(prev => ({
-          ...prev,
-          width: MOBILE_CANVAS_WIDTH,
-          height: MOBILE_CANVAS_HEIGHT,
-        }));
-      } else if (width < 900) {
-        setScreenSize('tablet');
-        setWorldSettings(prev => ({
-          ...prev,
-          width: TABLET_CANVAS_WIDTH,
-          height: TABLET_CANVAS_HEIGHT,
-        }));
-      } else {
-        setScreenSize('desktop');
-        setWorldSettings(prev => ({
-          ...prev,
-          width: DEFAULT_CANVAS_WIDTH,
-          height: DEFAULT_CANVAS_HEIGHT,
-        }));
-      }
-    };
-    updateScreenSize();
-    window.addEventListener('resize', updateScreenSize);
-    return () => window.removeEventListener('resize', updateScreenSize);
-  }, [gameStarted]);
-
-  // ...existing code...
-
-  return (
-    <div
-      className={clsx(
-        "min-h-screen w-full flex flex-col items-center bg-background text-foreground transition-colors duration-300",
-        darkMode && "dark",
-        "mobile-responsive"
-      )}
-      style={{ WebkitTapHighlightColor: "transparent" }}
-    >
-      {/* Top Controls */}
-      <div className="fixed top-2 right-2 z-50 flex gap-2 items-center mobile-top-controls">
-        {/* ...existing code... */}
-      </div>
-      {/* Main Simulation Area */}
-      <div className="flex flex-col items-center w-full h-full flex-1 pt-8 pb-4 px-2 md:px-0 mobile-main-area">
-        <canvas
-          ref={canvasRef}
-          width={canvasWidth}
-          height={canvasHeight}
-          className="rounded-lg shadow-lg bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 transition-colors duration-300 mobile-canvas"
-          style={{
-            maxWidth: "100vw",
-            maxHeight: "70vh",
-            width: "100vw",
-            height: "auto",
-            touchAction: "manipulation",
-            borderRadius: 12,
-            boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-          }}
-          onClick={handleCanvasClick}
-        />
-        {/* ...existing code... */}
-      </div>
-      {/* ...existing code... */}
-    </div>
-  );
-
-  // Occupation effects in simulation loop
-  useEffect(() => {
-    if (!gameStarted) return;
-    let tick = 0;
-    const interval = setInterval(() => {
-      tick++;
-      // Assign occupations
-      setBumbles(bs => {
-        bs.forEach(assignOccupation);
-        return [...bs];
-      });
-      // Apply occupation effects
-      setBumbles(bs => {
-        applyOccupationEffects(bs, stats.foodSources, stats.waterSources, setStatsFood, setStatsWater, tick);
-        return [...bs];
-      });
-    }, 1000);
-    function setStatsFood(fn) {
-      setStats(s => ({ ...s, foodSources: fn(s.foodSources) }));
-    }
-    function setStatsWater(fn) {
-      setStats(s => ({ ...s, waterSources: fn(s.waterSources) }));
-    }
-    return () => clearInterval(interval);
-  }, [gameStarted, setBumbles, setStats]);
-
-  // Enhanced genetics generation with vampire traits
   const generateGenetics = useCallback((gender: Gender, parent1?: Genetics, parent2?: Genetics): Genetics => {
     if (parent1 && parent2) {
       const mutate = (val1: number, val2: number, min: number, max: number, majorMutationChance: number = MAJOR_MUTATION_RATE) => {
@@ -795,6 +644,804 @@ interface Chuddle {
   const distance = (x1: number, y1: number, x2: number, y2: number) => {
     return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
   };
+
+  const updateSimulation = useCallback(() => {
+    if (!gameStarted) return;
+    
+    const currentTime = performance.now();
+    const rawDeltaTime = currentTime - lastTimeRef.current;
+    const deltaTime = Math.min(50, rawDeltaTime) * simulationSpeed;
+    lastTimeRef.current = currentTime;
+    
+    if (deltaTime < 1) return;
+    
+    // Update night cycle
+    if (worldSettings.nightCycleEnabled) {
+      nightCycleRef.current += deltaTime / 1000;
+      const cyclePosition = (nightCycleRef.current % (worldSettings.nightCycleDuration * 2)) / (worldSettings.nightCycleDuration * 2);
+      const isNight = cyclePosition > 0.5;
+      
+      setStats(prev => ({ ...prev, nightTime: isNight }));
+    }
+    
+    // Update particles (disease sneezes)
+    particlesRef.current = particlesRef.current.filter(particle => {
+      particle.life += deltaTime;
+      particle.x += particle.vx * (deltaTime / 16);
+      particle.y += particle.vy * (deltaTime / 16);
+      particle.vy += 0.1; // Gravity
+      return particle.life < particle.maxLife;
+    });
+
+    setBumbles(currentBumbles => {
+      if (currentBumbles.length === 0) return currentBumbles;
+      
+      let newBumbles = [...currentBumbles];
+      let newOffspring: Bumble[] = [];
+      let currentGeneration = Math.max(...newBumbles.map(b => b.generation));
+      let deathCounts = {
+        age: 0,
+        starvation: 0,
+        dehydration: 0,
+        fire: 0,
+        disease: 0,
+        overcrowding: 0
+      };
+
+      // Update each Bumble
+      newBumbles = newBumbles.map(bumble => {
+        if (!bumble.isAlive) return bumble;
+
+        let updated = updateMovement(bumble, food, fires, water, newBumbles, deltaTime);
+        updated.age += deltaTime;
+        updated.reproductionCooldown = Math.max(0, updated.reproductionCooldown - deltaTime);
+        
+        // Metabolic energy loss
+        const metabolicRate = (0.015 + updated.genetics.size * 0.01) / updated.genetics.metabolism;
+        const activityMultiplier = 1 + (Math.abs(updated.vx) + Math.abs(updated.vy)) * 0.1;
+        const vampireMetabolismBonus = updated.genetics.isVampire ? 0.8 : 1.0; // Vampires have slower metabolism
+        updated.energy = Math.max(0, updated.energy - metabolicRate * activityMultiplier * vampireMetabolismBonus);
+
+        // Fire damage
+        const nearFires = fires.filter(f => distance(updated.x, updated.y, f.x, f.y) < f.radius);
+        if (nearFires.length > 0) {
+          const totalIntensity = nearFires.reduce((sum, f) => sum + f.intensity, 0);
+          const damage = totalIntensity * (1 - updated.genetics.heatResistance) * 0.3;
+          updated.energy = Math.max(0, updated.energy - damage);
+          updated.stress = Math.min(100, updated.stress + damage * 2);
+          
+          if (updated.energy <= 0) {
+            updated.isAlive = false;
+            deathCounts.fire++;
+            freeName(updated.name);
+          }
+        }
+
+        // Disease mechanics with sneeze particles
+        if (Math.random() < worldSettings.diseaseRate * (1 - updated.genetics.immunity / 2)) {
+          const diseaseStrength = 0.5 + Math.random() * 0.5;
+          if (updated.diseaseResistance < diseaseStrength * 100) {
+            updated.energy = Math.max(0, updated.energy - diseaseStrength * 15);
+            updated.stress = Math.min(100, updated.stress + diseaseStrength * 10);
+            updated.isDiseasedSneezing = true;
+            
+            // Create sneeze particles
+            if (Date.now() - updated.lastSneeze > DISEASE_SNEEZE_INTERVAL) {
+              for (let i = 0; i < 3; i++) {
+                particlesRef.current.push({
+                  id: Math.random().toString(36).substr(2, 9),
+                  x: updated.x + (Math.random() - 0.5) * 10,
+                  y: updated.y + (Math.random() - 0.5) * 10,
+                  vx: (Math.random() - 0.5) * 2,
+                  vy: (Math.random() - 0.5) * 2 - 1,
+                  life: 0,
+                  maxLife: 2000,
+                  type: 'sneeze'
+                });
+              }
+              updated.lastSneeze = Date.now();
+            }
+            
+            if (updated.energy <= 0) {
+              updated.isAlive = false;
+              deathCounts.disease++;
+              freeName(updated.name);
+            }
+          } else {
+            updated.genetics.immunity = Math.min(1.5, updated.genetics.immunity + 0.01);
+            updated.isDiseasedSneezing = false;
+          }
+        } else {
+          updated.isDiseasedSneezing = false;
+        }
+
+        // Death conditions
+        if (updated.age >= updated.maxAge) {
+          updated.isAlive = false;
+          deathCounts.age++;
+          freeName(updated.name);
+        } else if (updated.energy <= 0) {
+          updated.isAlive = false;
+          deathCounts.starvation++;
+          freeName(updated.name);
+        } else if (updated.thirst >= updated.maxThirst) {
+          updated.isAlive = false;
+          deathCounts.dehydration++;
+          freeName(updated.name);
+        } else if (newBumbles.length > OVERCROWDING_THRESHOLD && Math.random() < 0.003) {
+          updated.isAlive = false;
+          deathCounts.overcrowding++;
+          freeName(updated.name);
+        }
+
+        return updated;
+      });
+
+      // Mating
+      const aliveBumbles = newBumbles.filter(b => b.isAlive);
+      const unmatedFemales = aliveBumbles.filter(b => 
+        b.gender === 'female' && 
+        !b.mateId && 
+        b.age > 45000 && 
+        b.stress < 80 &&
+        b.thirst < 80
+      );
+
+      for (const female of unmatedFemales) {
+        if (newBumbles.length < worldSettings.maxPopulation) {
+          const mate = findMate(female, aliveBumbles);
+          if (mate && Math.random() < 0.006 * (1 + female.genetics.sociability * 0.5)) {
+            const femaleIndex = newBumbles.findIndex(b => b.id === female.id);
+            const mateIndex = newBumbles.findIndex(b => b.id === mate.id);
+            if (femaleIndex !== -1 && mateIndex !== -1) {
+              newBumbles[femaleIndex].mateId = mate.id;
+              newBumbles[mateIndex].mateId = female.id;
+              newBumbles[femaleIndex].reproductionCooldown = getReproductionCooldown();
+              newBumbles[mateIndex].reproductionCooldown = getReproductionCooldown();
+
+              const offspring = reproduce(female, mate, currentGeneration);
+              newOffspring.push(...offspring);
+              
+              newBumbles[femaleIndex].stress = Math.max(0, newBumbles[femaleIndex].stress - 10);
+              newBumbles[mateIndex].stress = Math.max(0, newBumbles[mateIndex].stress - 10);
+            }
+          }
+        }
+      }
+
+      newBumbles.push(...newOffspring);
+
+      // Generation advancement
+      const generationCounts = new Map<number, number>();
+      newBumbles.filter(b => b.isAlive).forEach(b => {
+        generationCounts.set(b.generation, (generationCounts.get(b.generation) || 0) + 1);
+      });
+
+      if (generationCounts.get(currentGeneration) === 0 && newOffspring.length > 0) {
+        currentGeneration++;
+      }
+
+      // Update statistics
+      setStats(prev => ({
+        ...prev,
+        totalDeaths: prev.totalDeaths + Object.values(deathCounts).reduce((sum, count) => sum + count, 0),
+        fireDeaths: prev.fireDeaths + deathCounts.fire,
+        diseaseDeaths: prev.diseaseDeaths + deathCounts.disease,
+        starvationDeaths: prev.starvationDeaths + deathCounts.starvation,
+        dehydrationDeaths: prev.dehydrationDeaths + deathCounts.dehydration,
+        ageDeaths: prev.ageDeaths + deathCounts.age,
+        overcrowdingDeaths: prev.overcrowdingDeaths + deathCounts.overcrowding,
+        totalBorn: prev.totalBorn + newOffspring.length,
+        generation: currentGeneration
+      }));
+
+      return newBumbles;
+    });
+
+    // Update fires
+    setFires(currentFires => {
+      let updatedFires = currentFires.map(fire => ({
+        ...fire,
+        duration: fire.duration + deltaTime,
+        intensity: Math.max(0, fire.intensity - (deltaTime / fire.maxDuration) * 0.3)
+      })).filter(fire => fire.duration < fire.maxDuration && fire.intensity > 0.1);
+
+      // Fire spread and water extinguishing
+      updatedFires.forEach(fire => {
+        // Check if water can put out fire
+        const nearbyWater = water.filter(w => 
+          distance(fire.x, fire.y, w.x, w.y) < fire.radius + w.radius &&
+          w.currentWater > 20
+        );
+        
+        if (nearbyWater.length > 0) {
+          fire.intensity *= 0.8; // Water reduces fire intensity
+        }
+        
+        // Fire spread
+        if (Math.random() < FIRE_SPREAD_CHANCE) {
+          const nearbyFood = food.filter(f => 
+            distance(fire.x, fire.y, f.x, f.y) < fire.radius + 20 &&
+            f.type === 'chumblebush'
+          );
+          
+          if (nearbyFood.length > 0) {
+            const spreadTarget = nearbyFood[Math.floor(Math.random() * nearbyFood.length)];
+            const newFire = createFire(spreadTarget.x, spreadTarget.y);
+            newFire.radius *= 0.7;
+            updatedFires.push(newFire);
+          }
+        }
+      });
+
+      return updatedFires;
+    });
+
+    // Update food sources with berry growth
+    setFood(currentFood => {
+      let updatedFood = currentFood.map(f => {
+        let regrowthRate = f.regrowthRate;
+        
+        const nearFires = fires.filter(fire => distance(f.x, f.y, fire.x, fire.y) < fire.radius + 10);
+        if (nearFires.length > 0) {
+          regrowthRate *= 0.1;
+        }
+        
+        const weatherMultiplier = 0.5 + (environmentalFactors.humidity / 100) * 0.8;
+        regrowthRate *= weatherMultiplier;
+        
+        return {
+          ...f,
+          energy: Math.min(f.maxEnergy, f.energy + regrowthRate)
+        };
+      });
+
+      // Grow berries on bushes
+      const bushes = updatedFood.filter(f => f.type === 'chumblebush' && f.energy > f.maxEnergy * 0.7);
+      bushes.forEach(bush => {
+        if (Math.random() < 0.003 && bush.berryCount > 0) {
+          // Spawn a berry near the bush
+          const angle = Math.random() * Math.PI * 2;
+          const distance = 15 + Math.random() * 10;
+          const berryX = bush.x + Math.cos(angle) * distance;
+          const berryY = bush.y + Math.sin(angle) * distance;
+          
+          if (berryX > 0 && berryX < worldSettings.width && berryY > 0 && berryY < worldSettings.height) {
+            const berry = createFood(berryX, berryY, 'chumbleberry', bush.id);
+            updatedFood.push(berry);
+            bush.berryCount--;
+          }
+        }
+      });
+
+      // Consumption by bumbles
+      const aliveBumbles = bumbles.filter(b => b.isAlive);
+      let totalConsumed = 0;
+      
+      updatedFood = updatedFood.map(f => {
+        const nearbyBumbles = aliveBumbles.filter(b => 
+          distance(b.x, b.y, f.x, f.y) < 20 && b.energy < b.maxEnergy * 0.9
+        );
+        
+        if (nearbyBumbles.length > 0 && f.energy > 8) {
+          const consumptionPerBumble = Math.min(f.energy / nearbyBumbles.length, 8);
+          const totalConsumption = consumptionPerBumble * nearbyBumbles.length;
+          totalConsumed += totalConsumption;
+          return { ...f, energy: Math.max(0, f.energy - totalConsumption) };
+        }
+        return f;
+      });
+
+      if (totalConsumed > 0) {
+        setStats(prev => ({ ...prev, totalFoodConsumed: prev.totalFoodConsumed + totalConsumed }));
+      }
+
+      return updatedFood;
+    });
+
+    // Update water sources
+    setWater(currentWater => {
+      let totalConsumed = 0;
+      
+      const updatedWater = currentWater.map(w => {
+        // Natural refill
+        w.currentWater = Math.min(w.capacity, w.currentWater + w.refillRate);
+        
+        // Consumption by bumbles
+        const nearbyBumbles = bumbles.filter(b => 
+          b.isAlive && 
+          distance(b.x, b.y, w.x, w.y) < w.radius + 15 && 
+          b.thirst > 30
+        );
+        
+        if (nearbyBumbles.length > 0 && w.currentWater > 5) {
+          const consumptionPerBumble = Math.min(w.currentWater / nearbyBumbles.length, 15);
+          const totalConsumption = consumptionPerBumble * nearbyBumbles.length;
+          w.currentWater = Math.max(0, w.currentWater - totalConsumption);
+          totalConsumed += totalConsumption;
+        }
+        
+        return w;
+      });
+      
+      if (totalConsumed > 0) {
+        setStats(prev => ({ ...prev, totalWaterConsumed: prev.totalWaterConsumed + totalConsumed }));
+      }
+      
+      return updatedWater;
+    });
+  }, [bumbles, food, fires, water, gameStarted, simulationSpeed, worldSettings, environmentalFactors, createFire, createFood, freeName]);
+
+  const render = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Night/day background
+    const isNight = stats.nightTime;
+    const gradient = ctx.createLinearGradient(0, 0, 0, worldSettings.height);
+    
+    if (isNight) {
+      gradient.addColorStop(0, 'hsla(240, 40%, 15%, 1)');
+      gradient.addColorStop(1, 'hsla(260, 30%, 8%, 1)');
+    } else {
+      const skyIntensity = Math.max(0.3, 1 - fires.length * 0.1);
+      gradient.addColorStop(0, `hsla(200, 60%, ${50 + skyIntensity * 30}%, 1)`);
+      gradient.addColorStop(1, `hsla(120, 40%, ${40 + skyIntensity * 20}%, 1)`);
+    }
+    
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, worldSettings.width, worldSettings.height);
+
+    // Night stars
+    if (isNight) {
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      for (let i = 0; i < 50; i++) {
+        const x = (i * 137.5) % worldSettings.width;
+        const y = (i * 73.3) % worldSettings.height;
+        const twinkle = 0.5 + Math.sin(Date.now() * 0.001 + i) * 0.5;
+        ctx.globalAlpha = twinkle * 0.8;
+        ctx.beginPath();
+        ctx.arc(x, y, 1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // Environmental effects
+    if (environmentalFactors.windSpeed > 8) {
+      ctx.strokeStyle = isNight ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 10; i++) {
+        const y = (i / 10) * worldSettings.height;
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(worldSettings.width, y + Math.sin(Date.now() * 0.001 + i) * 20);
+        ctx.stroke();
+      }
+    }
+
+    // Draw water sources
+    water.forEach(w => {
+      const fillRatio = w.currentWater / w.capacity;
+      
+      // Water base
+      ctx.fillStyle = `rgba(64, 164, 223, ${0.6 + fillRatio * 0.4})`;
+      ctx.beginPath();
+      ctx.arc(w.x, w.y, w.radius * fillRatio, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Water edge
+      ctx.strokeStyle = `rgba(64, 164, 223, 0.8)`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(w.x, w.y, w.radius, 0, Math.PI * 2);
+      ctx.stroke();
+      
+      // Water sparkles
+      if (fillRatio > 0.3) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+        for (let i = 0; i < 3; i++) {
+          const angle = (Date.now() * 0.001 + i) % (Math.PI * 2);
+          const sparkleX = w.x + Math.cos(angle) * w.radius * 0.7;
+          const sparkleY = w.y + Math.sin(angle) * w.radius * 0.7;
+          ctx.beginPath();
+          ctx.arc(sparkleX, sparkleY, 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+    });
+
+    // Draw fires
+    fires.forEach(fire => {
+      const intensity = fire.intensity;
+      const flicker = 0.8 + Math.sin(Date.now() * 0.01 + fire.x) * 0.2;
+      
+      const gradient = ctx.createRadialGradient(fire.x, fire.y, 0, fire.x, fire.y, fire.radius);
+      gradient.addColorStop(0, `rgba(255, 100, 0, ${intensity * flicker})`);
+      gradient.addColorStop(0.5, `rgba(255, 50, 0, ${intensity * 0.8})`);
+      gradient.addColorStop(1, `rgba(100, 0, 0, ${intensity * 0.3})`);
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(fire.x, fire.y, fire.radius * flicker, 0, Math.PI * 2);
+      ctx.fill();
+      
+      for (let i = 0; i < 5; i++) {
+        const angle = Math.random() * Math.PI * 2;
+        const distance = fire.radius * (0.5 + Math.random() * 0.8);
+        const sparkX = fire.x + Math.cos(angle) * distance;
+        const sparkY = fire.y + Math.sin(angle) * distance;
+        
+        ctx.fillStyle = `rgba(255, 150, 0, ${intensity * Math.random()})`;
+        ctx.beginPath();
+        ctx.arc(sparkX, sparkY, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+
+    // Enhanced food rendering
+    food.forEach(f => {
+      const energyRatio = f.energy / f.maxEnergy;
+      const alpha = (0.4 + energyRatio * 0.6) * (isNight ? 0.8 : 1);
+      const qualityMultiplier = 0.7 + f.quality * 0.6;
+      
+      if (f.type === 'chumblebush') {
+        ctx.fillStyle = `rgba(34, 139, 34, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, (8 + energyRatio * 6) * qualityMultiplier, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Berry indicators on bush
+        if (f.berryCount > 0) {
+          ctx.fillStyle = `rgba(220, 20, 60, ${alpha * 0.8})`;
+          for (let i = 0; i < Math.min(f.berryCount, 5); i++) {
+            const angle = (i / 5) * Math.PI * 2;
+            const berryX = f.x + Math.cos(angle) * (6 + energyRatio * 4) * qualityMultiplier;
+            const berryY = f.y + Math.sin(angle) * (6 + energyRatio * 4) * qualityMultiplier;
+            ctx.beginPath();
+            ctx.arc(berryX, berryY, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        
+        ctx.fillStyle = `rgba(0, ${100 + f.quality * 50}, 0, ${alpha})`;
+        const leafCount = Math.floor(3 + f.quality * 2);
+        for (let i = 0; i < leafCount; i++) {
+          const angle = (i / leafCount) * Math.PI * 2;
+          const leafX = f.x + Math.cos(angle) * (4 + energyRatio * 4) * qualityMultiplier;
+          const leafY = f.y + Math.sin(angle) * (4 + energyRatio * 4) * qualityMultiplier;
+          ctx.beginPath();
+          ctx.arc(leafX, leafY, 2 + f.quality, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (f.type === 'chumbleberry') {
+        ctx.fillStyle = `rgba(220, 20, 60, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, (3 + energyRatio * 3) * qualityMultiplier, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (f.type === 'golden_berry') {
+        const glow = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, 20);
+        glow.addColorStop(0, `rgba(255, 215, 0, ${alpha * 0.8})`);
+        glow.addColorStop(1, 'rgba(255, 215, 0, 0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, 15, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
+        ctx.beginPath();
+        ctx.arc(f.x, f.y, (4 + energyRatio * 3) * qualityMultiplier, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+
+    // Draw disease particles
+    particlesRef.current.forEach(particle => {
+      const lifeRatio = particle.life / particle.maxLife;
+      const alpha = 1 - lifeRatio;
+      
+      if (particle.type === 'sneeze') {
+        ctx.fillStyle = `rgba(0, 255, 0, ${alpha * 0.6})`;
+        ctx.beginPath();
+        ctx.arc(particle.x, particle.y, 2 * (1 - lifeRatio), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    });
+
+    // Enhanced Bumble rendering with names and vampire features
+    bumbles.filter(b => b.isAlive).forEach(bumble => {
+      const { genetics, x, y, age, maxAge, mateId, gender, stress, energy, maxEnergy, thirst, name } = bumble;
+      const radius = genetics.size * 12;
+      const isSelected = selectedBumble === bumble.id;
+      
+      // Selection highlight with white glow
+      if (isSelected) {
+        const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, radius + 12);
+        glowGradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+        glowGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        ctx.fillStyle = glowGradient;
+        ctx.beginPath();
+        ctx.arc(x, y, radius + 12, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // Age and health effects
+      const ageRatio = age / maxAge;
+      const healthRatio = energy / maxEnergy;
+      const thirstRatio = thirst / 100;
+      const stressEffect = Math.max(0.6, 1 - stress / 100);
+      const nightVisibility = isNight && !genetics.isVampire ? 0.7 : 1.0;
+      const alpha = Math.max(0.5, (healthRatio * stressEffect * (1 - thirstRatio * 0.3)) * (1 - ageRatio * 0.3)) * nightVisibility;
+      
+      // Color with vampire desaturation
+      const hue = genetics.color.hue;
+      const sat = genetics.color.saturation * 80 * stressEffect * (genetics.isVampire ? 0.5 : 1);
+      const light = genetics.color.brightness * 55 * healthRatio * (genetics.isVampire ? 0.6 : 1);
+
+      // Body with vampire darkness
+      ctx.fillStyle = `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Vampire aura at night
+      if (genetics.isVampire && isNight) {
+        const vampireGlow = ctx.createRadialGradient(x, y, 0, x, y, radius + 8);
+        vampireGlow.addColorStop(0, 'rgba(150, 0, 150, 0)');
+        vampireGlow.addColorStop(1, `rgba(150, 0, 150, ${genetics.vampireStrength * 0.3})`);
+        ctx.fillStyle = vampireGlow;
+        ctx.beginPath();
+        ctx.arc(x, y, radius + 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      
+      // Health shimmer
+      if (healthRatio > 0.8 && stress < 30 && thirst < 30) {
+        ctx.fillStyle = `hsla(${hue}, 60%, 80%, 0.2)`;
+        ctx.beginPath();
+        ctx.arc(x, y, radius * 1.1, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Male antenna
+      if (gender === 'male' && genetics.antennaSize > 0) {
+        const antennaLength = genetics.antennaSize * 18;
+        const segments = Math.floor(2 + genetics.antennaSize * 2);
+        
+        ctx.strokeStyle = `hsla(${hue}, ${sat}%, 25%, ${alpha})`;
+        ctx.lineWidth = 2 + genetics.antennaSize;
+        
+        for (let side = 0; side < 2; side++) {
+          const xOffset = side === 0 ? -4 : 4;
+          const baseX = x + xOffset;
+          const baseY = y - radius;
+          
+          for (let i = 0; i < segments; i++) {
+            const segmentStart = i / segments;
+            const segmentEnd = (i + 1) / segments;
+            const curve = Math.sin(segmentEnd * Math.PI) * genetics.antennaSize * 3;
+            
+            ctx.beginPath();
+            ctx.moveTo(
+              baseX + curve * (side === 0 ? -1 : 1), 
+              baseY - antennaLength * segmentStart
+            );
+            ctx.lineTo(
+              baseX + curve * (side === 0 ? -1 : 1), 
+              baseY - antennaLength * segmentEnd
+            );
+            ctx.stroke();
+          }
+          
+          const tipSize = 2 + genetics.antennaSize * 2;
+          ctx.fillStyle = `hsla(${hue + 30}, 70%, 40%, ${alpha})`;
+          ctx.beginPath();
+          ctx.arc(baseX + (genetics.antennaSize * 3) * (side === 0 ? -1 : 1), baseY - antennaLength, tipSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      // Enhanced googly eyes
+      const eyeSize = genetics.eyeSize * 5;
+      const eyeOffset = radius * 0.65;
+      const pupilSize = eyeSize * (0.3 + genetics.intelligence * 0.2);
+      
+      // Vampire eyes glow red at night
+      const eyeColor = genetics.isVampire && isNight ? 'rgba(255, 100, 100, 0.8)' : 
+                      stress > 50 ? `rgba(255, ${255 - stress}, ${255 - stress}, ${alpha})` : 
+                      `rgba(255, 255, 255, ${alpha})`;
+      
+      // Left eye
+      ctx.fillStyle = eyeColor;
+      ctx.beginPath();
+      ctx.arc(x - eyeOffset, y - radius * 0.4, eyeSize, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Left pupil
+      const pupilOffsetX = bumble.vx * 0.8 + (bumble.targetFood ? 0.5 : 0);
+      const pupilOffsetY = bumble.vy * 0.8 + (bumble.fleeTime > 0 ? -1 : 0);
+      ctx.fillStyle = genetics.isVampire && isNight ? 'darkred' : 'black';
+      ctx.beginPath();
+      ctx.arc(x - eyeOffset + pupilOffsetX, y - radius * 0.4 + pupilOffsetY, pupilSize, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Right eye
+      ctx.fillStyle = eyeColor;
+      ctx.beginPath();
+      ctx.arc(x + eyeOffset, y - radius * 0.4, eyeSize, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Right pupil
+      ctx.fillStyle = genetics.isVampire && isNight ? 'darkred' : 'black';
+      ctx.beginPath();
+      ctx.arc(x + eyeOffset + pupilOffsetX, y - radius * 0.4 + pupilOffsetY, pupilSize, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Intelligence sparkle
+      if (genetics.intelligence > 1.2) {
+        ctx.fillStyle = `rgba(255, 255, 150, ${alpha * 0.6})`;
+        ctx.font = `${radius * 0.4}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.fillText('✨', x, y - radius - 5);
+      }
+      
+      // Vampire fangs
+      if (genetics.isVampire) {
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.moveTo(x - 3, y + radius * 0.2);
+        ctx.lineTo(x - 5, y + radius * 0.5);
+        ctx.lineTo(x - 1, y + radius * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.beginPath();
+        ctx.moveTo(x + 3, y + radius * 0.2);
+        ctx.lineTo(x + 5, y + radius * 0.5);
+        ctx.lineTo(x + 1, y + radius * 0.5);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // Mated indicator
+      if (mateId) {
+        const mate = bumbles.find(b => b.id === mateId);
+        const heartSize = radius * 0.5;
+        const heartColor = mate && mate.isAlive ? '#ff4444' : '#666666';
+        ctx.fillStyle = heartColor;
+        ctx.font = `${heartSize}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.fillText('♥', x, y - radius - 12);
+      }
+      
+      // Disease sneeze indicator
+      if (bumble.isDiseasedSneezing) {
+        ctx.fillStyle = 'rgba(0, 255, 0, 0.6)';
+        ctx.font = `${radius * 0.3}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.fillText('🤧', x + radius, y - radius);
+      }
+      
+      // Name display
+      ctx.fillStyle = isNight ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)';
+      ctx.font = `${Math.max(8, radius * 0.4)}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.fillText(name, x, y + radius + 15);
+    });
+
+    // Selected bumble detailed info with better positioning
+    if (selectedBumble) {
+      const bumble = bumbles.find(b => b.id === selectedBumble);
+      if (bumble && bumble.isAlive) {
+        // Calculate info panel position to stay on screen
+        let infoX = bumble.x + 60;
+        let infoY = bumble.y - 40;
+        const infoWidth = 220;
+        const infoHeight = 140;
+        
+        // Adjust if off-screen
+        if (infoX + infoWidth > worldSettings.width) {
+          infoX = bumble.x - infoWidth - 20;
+        }
+        if (infoY < 0) {
+          infoY = 10;
+        }
+        if (infoY + infoHeight > worldSettings.height) {
+          infoY = worldSettings.height - infoHeight - 10;
+        }
+        
+        // Store position for next render
+        setSelectedBumbleInfo({ x: infoX, y: infoY });
+        
+        // Info panel background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
+        ctx.fillRect(infoX, infoY, infoWidth, infoHeight);
+        ctx.strokeStyle = bumble.genetics.isVampire ? '#8b0000' : 'white';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(infoX, infoY, infoWidth, infoHeight);
+        
+        // Info text
+        ctx.fillStyle = bumble.genetics.isVampire ? '#ffaaaa' : 'white';
+        ctx.font = '11px Arial';
+        ctx.textAlign = 'left';
+        
+        const info = [
+          `${bumble.name} ${bumble.gender === 'male' ? '♂' : '♀'} Gen ${bumble.generation}`,
+          `Age: ${Math.round(bumble.age / 1000)}s`,
+          `Energy: ${Math.round(bumble.energy)}/${Math.round(bumble.maxEnergy)}`,
+          `Thirst: ${Math.round(bumble.thirst)}%`,
+          `Size: ${bumble.genetics.size.toFixed(2)}`,
+          `Speed: ${bumble.genetics.speed.toFixed(2)}`,
+          `Intelligence: ${bumble.genetics.intelligence.toFixed(2)}`,
+          `Stress: ${Math.round(bumble.stress)}%`,
+          `Learning: ${Math.round(bumble.learningExperience)}`,
+          ...(bumble.genetics.isVampire ? [`🧛 Vampire (${(bumble.genetics.vampireStrength * 100).toFixed(0)}%)`] : []),
+          ...(bumble.mateId ? ['💕 Mated'] : [])
+        ];
+        
+        info.forEach((line, i) => {
+          ctx.fillText(line, infoX + 5, infoY + 15 + i * 12);
+        });
+
+        // Health bar
+        const barX = infoX + 5;
+        const barY = infoY + 15 + info.length * 12 + 8;
+        const barWidth = 120;
+        const barHeight = 10;
+        ctx.fillStyle = '#333';
+        ctx.fillRect(barX, barY, barWidth, barHeight);
+        ctx.fillStyle = '#4caf50';
+        const healthRatio = bumble.health / bumble.maxHealth;
+        ctx.fillRect(barX, barY, barWidth * healthRatio, barHeight);
+        ctx.strokeStyle = 'white';
+        ctx.strokeRect(barX, barY, barWidth, barHeight);
+        ctx.fillStyle = 'white';
+        ctx.font = '10px Arial';
+        ctx.fillText(`Health: ${Math.round(bumble.health)} / ${Math.round(bumble.maxHealth)}`, barX, barY + barHeight + 12);
+
+        // Occupation display
+        if (bumble.occupation && bumble.occupation !== 'none') {
+          ctx.fillStyle = '#aaffaa';
+          ctx.font = 'bold 12px Arial';
+          let occLabel = '';
+          if (bumble.occupation === 'doctor') occLabel = '🩺 Doctor';
+          else if (bumble.occupation === 'scientist') occLabel = '🔬 Scientist';
+          else if (bumble.occupation === 'farmer') occLabel = '🌱 Farmer';
+          else if (bumble.occupation === 'gatherer') occLabel = '🍎 Gatherer';
+          else if (bumble.occupation === 'scout') occLabel = '🧭 Scout';
+          else if (bumble.occupation === 'guardian') occLabel = '🛡️ Guardian';
+          else if (bumble.occupation === 'breeder') occLabel = '💞 Breeder';
+          ctx.fillText(occLabel, barX, barY + barHeight + 28);
+        }
+      }
+    }
+  }, [bumbles, food, fires, water, stats.nightTime, worldSettings, environmentalFactors, selectedBumble]);
+
+  // Animation loop
+  useEffect(() => {
+    if (isRunning && gameStarted) {
+      lastTimeRef.current = performance.now();
+      const animate = () => {
+        updateSimulation();
+        render();
+        animationRef.current = requestAnimationFrame(animate);
+      };
+      animationRef.current = requestAnimationFrame(animate);
+    } else {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      render();
+    }
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [isRunning, gameStarted, updateSimulation, render]);
 
   // Enhanced female mate selection
   const calculateAttractiveness = (female: Bumble, male: Bumble): number => {
@@ -1242,842 +1889,6 @@ interface Chuddle {
     return offspring;
   };
 
-  // Enhanced simulation update
-  const updateSimulation = useCallback(() => {
-    if (!gameStarted) return;
-    
-    const currentTime = performance.now();
-    const rawDeltaTime = currentTime - lastTimeRef.current;
-    const deltaTime = Math.min(50, rawDeltaTime) * simulationSpeed;
-    lastTimeRef.current = currentTime;
-    
-    if (deltaTime < 1) return;
-    
-    // Update night cycle
-    if (worldSettings.nightCycleEnabled) {
-      nightCycleRef.current += deltaTime / 1000;
-      const cyclePosition = (nightCycleRef.current % (worldSettings.nightCycleDuration * 2)) / (worldSettings.nightCycleDuration * 2);
-      const isNight = cyclePosition > 0.5;
-      
-      setStats(prev => ({ ...prev, nightTime: isNight }));
-    }
-    
-    // Update particles (disease sneezes)
-    particlesRef.current = particlesRef.current.filter(particle => {
-      particle.life += deltaTime;
-      particle.x += particle.vx * (deltaTime / 16);
-      particle.y += particle.vy * (deltaTime / 16);
-      particle.vy += 0.1; // Gravity
-      return particle.life < particle.maxLife;
-    });
-
-    setBumbles(currentBumbles => {
-      if (currentBumbles.length === 0) return currentBumbles;
-      
-      let newBumbles = [...currentBumbles];
-      let newOffspring: Bumble[] = [];
-      let currentGeneration = Math.max(...newBumbles.map(b => b.generation));
-      let deathCounts = {
-        age: 0,
-        starvation: 0,
-        dehydration: 0,
-        fire: 0,
-        disease: 0,
-        overcrowding: 0
-      };
-
-      // Update each Bumble
-      newBumbles = newBumbles.map(bumble => {
-        if (!bumble.isAlive) return bumble;
-
-        let updated = updateMovement(bumble, food, fires, water, newBumbles, deltaTime);
-        updated.age += deltaTime;
-        updated.reproductionCooldown = Math.max(0, updated.reproductionCooldown - deltaTime);
-        
-        // Metabolic energy loss
-        const metabolicRate = (0.015 + updated.genetics.size * 0.01) / updated.genetics.metabolism;
-        const activityMultiplier = 1 + (Math.abs(updated.vx) + Math.abs(updated.vy)) * 0.1;
-        const vampireMetabolismBonus = updated.genetics.isVampire ? 0.8 : 1.0; // Vampires have slower metabolism
-        updated.energy = Math.max(0, updated.energy - metabolicRate * activityMultiplier * vampireMetabolismBonus);
-
-        // Fire damage
-        const nearFires = fires.filter(f => distance(updated.x, updated.y, f.x, f.y) < f.radius);
-        if (nearFires.length > 0) {
-          const totalIntensity = nearFires.reduce((sum, f) => sum + f.intensity, 0);
-          const damage = totalIntensity * (1 - updated.genetics.heatResistance) * 0.3;
-          updated.energy = Math.max(0, updated.energy - damage);
-          updated.stress = Math.min(100, updated.stress + damage * 2);
-          
-          if (updated.energy <= 0) {
-            updated.isAlive = false;
-            deathCounts.fire++;
-            freeName(updated.name);
-          }
-        }
-
-        // Disease mechanics with sneeze particles
-        if (Math.random() < worldSettings.diseaseRate * (1 - updated.genetics.immunity / 2)) {
-          const diseaseStrength = 0.5 + Math.random() * 0.5;
-          if (updated.diseaseResistance < diseaseStrength * 100) {
-            updated.energy = Math.max(0, updated.energy - diseaseStrength * 15);
-            updated.stress = Math.min(100, updated.stress + diseaseStrength * 10);
-            updated.isDiseasedSneezing = true;
-            
-            // Create sneeze particles
-            if (Date.now() - updated.lastSneeze > DISEASE_SNEEZE_INTERVAL) {
-              for (let i = 0; i < 3; i++) {
-                particlesRef.current.push({
-                  id: Math.random().toString(36).substr(2, 9),
-                  x: updated.x + (Math.random() - 0.5) * 10,
-                  y: updated.y + (Math.random() - 0.5) * 10,
-                  vx: (Math.random() - 0.5) * 2,
-                  vy: (Math.random() - 0.5) * 2 - 1,
-                  life: 0,
-                  maxLife: 2000,
-                  type: 'sneeze'
-                });
-              }
-              updated.lastSneeze = Date.now();
-            }
-            
-            if (updated.energy <= 0) {
-              updated.isAlive = false;
-              deathCounts.disease++;
-              freeName(updated.name);
-            }
-          } else {
-            updated.genetics.immunity = Math.min(1.5, updated.genetics.immunity + 0.01);
-            updated.isDiseasedSneezing = false;
-          }
-        } else {
-          updated.isDiseasedSneezing = false;
-        }
-
-        // Death conditions
-        if (updated.age >= updated.maxAge) {
-          updated.isAlive = false;
-          deathCounts.age++;
-          freeName(updated.name);
-        } else if (updated.energy <= 0) {
-          updated.isAlive = false;
-          deathCounts.starvation++;
-          freeName(updated.name);
-        } else if (updated.thirst >= updated.maxThirst) {
-          updated.isAlive = false;
-          deathCounts.dehydration++;
-          freeName(updated.name);
-        } else if (newBumbles.length > OVERCROWDING_THRESHOLD && Math.random() < 0.003) {
-          updated.isAlive = false;
-          deathCounts.overcrowding++;
-          freeName(updated.name);
-        }
-
-        return updated;
-      });
-
-      // Mating
-      const aliveBumbles = newBumbles.filter(b => b.isAlive);
-      const unmatedFemales = aliveBumbles.filter(b => 
-        b.gender === 'female' && 
-        !b.mateId && 
-        b.age > 45000 && 
-        b.stress < 80 &&
-        b.thirst < 80
-      );
-
-      for (const female of unmatedFemales) {
-        if (newBumbles.length < worldSettings.maxPopulation) {
-          const mate = findMate(female, aliveBumbles);
-          if (mate && Math.random() < 0.006 * (1 + female.genetics.sociability * 0.5)) {
-            const femaleIndex = newBumbles.findIndex(b => b.id === female.id);
-            const mateIndex = newBumbles.findIndex(b => b.id === mate.id);
-            if (femaleIndex !== -1 && mateIndex !== -1) {
-              newBumbles[femaleIndex].mateId = mate.id;
-              newBumbles[mateIndex].mateId = female.id;
-              newBumbles[femaleIndex].reproductionCooldown = REPRODUCTION_COOLDOWN;
-              newBumbles[mateIndex].reproductionCooldown = REPRODUCTION_COOLDOWN;
-
-              const offspring = reproduce(female, mate, currentGeneration);
-              newOffspring.push(...offspring);
-              
-              newBumbles[femaleIndex].stress = Math.max(0, newBumbles[femaleIndex].stress - 10);
-              newBumbles[mateIndex].stress = Math.max(0, newBumbles[mateIndex].stress - 10);
-            }
-          }
-        }
-      }
-
-      newBumbles.push(...newOffspring);
-
-      // Generation advancement
-      const generationCounts = new Map<number, number>();
-      newBumbles.filter(b => b.isAlive).forEach(b => {
-        generationCounts.set(b.generation, (generationCounts.get(b.generation) || 0) + 1);
-      });
-
-      if (generationCounts.get(currentGeneration) === 0 && newOffspring.length > 0) {
-        currentGeneration++;
-      }
-
-      // Update statistics
-      setStats(prev => ({
-        ...prev,
-        totalDeaths: prev.totalDeaths + Object.values(deathCounts).reduce((sum, count) => sum + count, 0),
-        fireDeaths: prev.fireDeaths + deathCounts.fire,
-        diseaseDeaths: prev.diseaseDeaths + deathCounts.disease,
-        starvationDeaths: prev.starvationDeaths + deathCounts.starvation,
-        dehydrationDeaths: prev.dehydrationDeaths + deathCounts.dehydration,
-        ageDeaths: prev.ageDeaths + deathCounts.age,
-        overcrowdingDeaths: prev.overcrowdingDeaths + deathCounts.overcrowding,
-        totalBorn: prev.totalBorn + newOffspring.length,
-        generation: currentGeneration
-      }));
-
-      return newBumbles;
-    });
-
-    // Update fires
-    setFires(currentFires => {
-      let updatedFires = currentFires.map(fire => ({
-        ...fire,
-        duration: fire.duration + deltaTime,
-        intensity: Math.max(0, fire.intensity - (deltaTime / fire.maxDuration) * 0.3)
-      })).filter(fire => fire.duration < fire.maxDuration && fire.intensity > 0.1);
-
-      // Fire spread and water extinguishing
-      updatedFires.forEach(fire => {
-        // Check if water can put out fire
-        const nearbyWater = water.filter(w => 
-          distance(fire.x, fire.y, w.x, w.y) < fire.radius + w.radius &&
-          w.currentWater > 20
-        );
-        
-        if (nearbyWater.length > 0) {
-          fire.intensity *= 0.8; // Water reduces fire intensity
-        }
-        
-        // Fire spread
-        if (Math.random() < FIRE_SPREAD_CHANCE) {
-          const nearbyFood = food.filter(f => 
-            distance(fire.x, fire.y, f.x, f.y) < fire.radius + 20 &&
-            f.type === 'chumblebush'
-          );
-          
-          if (nearbyFood.length > 0) {
-            const spreadTarget = nearbyFood[Math.floor(Math.random() * nearbyFood.length)];
-            const newFire = createFire(spreadTarget.x, spreadTarget.y);
-            newFire.radius *= 0.7;
-            updatedFires.push(newFire);
-          }
-        }
-      });
-
-      return updatedFires;
-    });
-
-    // Update food sources with berry growth
-    setFood(currentFood => {
-      let updatedFood = currentFood.map(f => {
-        let regrowthRate = f.regrowthRate;
-        
-        const nearFires = fires.filter(fire => distance(f.x, f.y, fire.x, fire.y) < fire.radius + 10);
-        if (nearFires.length > 0) {
-          regrowthRate *= 0.1;
-        }
-        
-        const weatherMultiplier = 0.5 + (environmentalFactors.humidity / 100) * 0.8;
-        regrowthRate *= weatherMultiplier;
-        
-        return {
-          ...f,
-          energy: Math.min(f.maxEnergy, f.energy + regrowthRate)
-        };
-      });
-
-      // Grow berries on bushes
-      const bushes = updatedFood.filter(f => f.type === 'chumblebush' && f.energy > f.maxEnergy * 0.7);
-      bushes.forEach(bush => {
-        if (Math.random() < 0.003 && bush.berryCount > 0) {
-          // Spawn a berry near the bush
-          const angle = Math.random() * Math.PI * 2;
-          const distance = 15 + Math.random() * 10;
-          const berryX = bush.x + Math.cos(angle) * distance;
-          const berryY = bush.y + Math.sin(angle) * distance;
-          
-          if (berryX > 0 && berryX < worldSettings.width && berryY > 0 && berryY < worldSettings.height) {
-            const berry = createFood(berryX, berryY, 'chumbleberry', bush.id);
-            updatedFood.push(berry);
-            bush.berryCount--;
-          }
-        }
-      });
-
-      // Consumption by bumbles
-      const aliveBumbles = bumbles.filter(b => b.isAlive);
-      let totalConsumed = 0;
-      
-      updatedFood = updatedFood.map(f => {
-        const nearbyBumbles = aliveBumbles.filter(b => 
-          distance(b.x, b.y, f.x, f.y) < 20 && b.energy < b.maxEnergy * 0.9
-        );
-        
-        if (nearbyBumbles.length > 0 && f.energy > 8) {
-          const consumptionPerBumble = Math.min(f.energy / nearbyBumbles.length, 8);
-          const totalConsumption = consumptionPerBumble * nearbyBumbles.length;
-          totalConsumed += totalConsumption;
-          return { ...f, energy: Math.max(0, f.energy - totalConsumption) };
-        }
-        return f;
-      });
-
-      if (totalConsumed > 0) {
-        setStats(prev => ({ ...prev, totalFoodConsumed: prev.totalFoodConsumed + totalConsumed }));
-      }
-
-      return updatedFood;
-    });
-
-    // Update water sources
-    setWater(currentWater => {
-      let totalConsumed = 0;
-      
-      const updatedWater = currentWater.map(w => {
-        // Natural refill
-        w.currentWater = Math.min(w.capacity, w.currentWater + w.refillRate);
-        
-        // Consumption by bumbles
-        const nearbyBumbles = bumbles.filter(b => 
-          b.isAlive && 
-          distance(b.x, b.y, w.x, w.y) < w.radius + 15 && 
-          b.thirst > 30
-        );
-        
-        if (nearbyBumbles.length > 0 && w.currentWater > 5) {
-          const consumptionPerBumble = Math.min(w.currentWater / nearbyBumbles.length, 15);
-          const totalConsumption = consumptionPerBumble * nearbyBumbles.length;
-          w.currentWater = Math.max(0, w.currentWater - totalConsumption);
-          totalConsumed += totalConsumption;
-        }
-        
-        return w;
-      });
-      
-      if (totalConsumed > 0) {
-        setStats(prev => ({ ...prev, totalWaterConsumed: prev.totalWaterConsumed + totalConsumed }));
-      }
-      
-      return updatedWater;
-    });
-  }, [bumbles, food, fires, water, gameStarted, simulationSpeed, worldSettings, environmentalFactors, createFire, createFood, freeName]);
-
-  // Enhanced statistics calculation
-  useEffect(() => {
-    const livingBumbles = bumbles.filter(b => b.isAlive);
-    const males = livingBumbles.filter(b => b.gender === 'male');
-    const females = livingBumbles.filter(b => b.gender === 'female');
-    const vampires = livingBumbles.filter(b => b.genetics.isVampire);
-    const matedPairs = new Set(livingBumbles.filter(b => b.mateId).map(b => [b.id, b.mateId].sort().join('-'))).size;
-    
-    if (livingBumbles.length > 0) {
-      setStats(prev => ({
-        ...prev,
-        population: livingBumbles.length,
-        maleCount: males.length,
-        femaleCount: females.length,
-        vampireCount: vampires.length,
-        averageAge: livingBumbles.reduce((sum, b) => sum + b.age, 0) / livingBumbles.length / 1000,
-        averageSize: livingBumbles.reduce((sum, b) => sum + b.genetics.size, 0) / livingBumbles.length,
-        averageSpeed: livingBumbles.reduce((sum, b) => sum + b.genetics.speed, 0) / livingBumbles.length,
-        averageFertility: livingBumbles.reduce((sum, b) => sum + b.genetics.fertility, 0) / livingBumbles.length,
-        averageLongevity: livingBumbles.reduce((sum, b) => sum + b.genetics.longevity, 0) / livingBumbles.length,
-        averageAntennaSize: males.length > 0 ? males.reduce((sum, b) => sum + b.genetics.antennaSize, 0) / males.length : 0,
-        averageEyeSize: livingBumbles.reduce((sum, b) => sum + b.genetics.eyeSize, 0) / livingBumbles.length,
-        averageIntelligence: livingBumbles.reduce((sum, b) => sum + b.genetics.intelligence, 0) / livingBumbles.length,
-        averageImmunity: livingBumbles.reduce((sum, b) => sum + b.genetics.immunity, 0) / livingBumbles.length,
-        averageHeatResistance: livingBumbles.reduce((sum, b) => sum + b.genetics.heatResistance, 0) / livingBumbles.length,
-        averageStress: livingBumbles.reduce((sum, b) => sum + b.stress, 0) / livingBumbles.length,
-        averageThirst: livingBumbles.reduce((sum, b) => sum + b.thirst, 0) / livingBumbles.length,
-        avgLearningExperience: livingBumbles.reduce((sum, b) => sum + b.learningExperience, 0) / livingBumbles.length,
-        matedPairs,
-        foodSources: food.length,
-        waterSources: water.length,
-        activeFires: fires.length
-      }));
-    }
-  }, [bumbles, food, fires, water]);
-
-  // Enhanced rendering with night glow effect
-  const render = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Night/day background
-    const isNight = stats.nightTime;
-    const gradient = ctx.createLinearGradient(0, 0, 0, worldSettings.height);
-    
-    if (isNight) {
-      gradient.addColorStop(0, 'hsla(240, 40%, 15%, 1)');
-      gradient.addColorStop(1, 'hsla(260, 30%, 8%, 1)');
-    } else {
-      const skyIntensity = Math.max(0.3, 1 - fires.length * 0.1);
-      gradient.addColorStop(0, `hsla(200, 60%, ${50 + skyIntensity * 30}%, 1)`);
-      gradient.addColorStop(1, `hsla(120, 40%, ${40 + skyIntensity * 20}%, 1)`);
-    }
-    
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, worldSettings.width, worldSettings.height);
-
-    // Night stars
-    if (isNight) {
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-      for (let i = 0; i < 50; i++) {
-        const x = (i * 137.5) % worldSettings.width;
-        const y = (i * 73.3) % worldSettings.height;
-        const twinkle = 0.5 + Math.sin(Date.now() * 0.001 + i) * 0.5;
-        ctx.globalAlpha = twinkle * 0.8;
-        ctx.beginPath();
-        ctx.arc(x, y, 1, 0, Math.PI * 2);
-        ctx.fill();
-
-      ctx.globalAlpha = 1;
-    }
-
-    // Environmental effects
-    if (environmentalFactors.windSpeed > 8) {
-      ctx.strokeStyle = isNight ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.1)';
-      ctx.lineWidth = 1;
-      for (let i = 0; i < 10; i++) {
-        const y = (i / 10) * worldSettings.height;
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(worldSettings.width, y + Math.sin(Date.now() * 0.001 + i) * 20);
-        ctx.stroke();
-      }
-    }
-
-    // Draw water sources
-    water.forEach(w => {
-      const fillRatio = w.currentWater / w.capacity;
-      
-      // Water base
-      ctx.fillStyle = `rgba(64, 164, 223, ${0.6 + fillRatio * 0.4})`;
-      ctx.beginPath();
-      ctx.arc(w.x, w.y, w.radius * fillRatio, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Water edge
-      ctx.strokeStyle = `rgba(64, 164, 223, 0.8)`;
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(w.x, w.y, w.radius, 0, Math.PI * 2);
-      ctx.stroke();
-      
-      // Water sparkles
-      if (fillRatio > 0.3) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-        for (let i = 0; i < 3; i++) {
-          const angle = (Date.now() * 0.001 + i) % (Math.PI * 2);
-          const sparkleX = w.x + Math.cos(angle) * w.radius * 0.7;
-          const sparkleY = w.y + Math.sin(angle) * w.radius * 0.7;
-          ctx.beginPath();
-          ctx.arc(sparkleX, sparkleY, 1.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-    });
-
-    // Draw fires
-    fires.forEach(fire => {
-      const intensity = fire.intensity;
-      const flicker = 0.8 + Math.sin(Date.now() * 0.01 + fire.x) * 0.2;
-      
-      const gradient = ctx.createRadialGradient(fire.x, fire.y, 0, fire.x, fire.y, fire.radius);
-      gradient.addColorStop(0, `rgba(255, 100, 0, ${intensity * flicker})`);
-      gradient.addColorStop(0.5, `rgba(255, 50, 0, ${intensity * 0.8})`);
-      gradient.addColorStop(1, `rgba(100, 0, 0, ${intensity * 0.3})`);
-      ctx.fillStyle = gradient;
-      ctx.beginPath();
-      ctx.arc(fire.x, fire.y, fire.radius * flicker, 0, Math.PI * 2);
-      ctx.fill();
-      
-      for (let i = 0; i < 5; i++) {
-        const angle = Math.random() * Math.PI * 2;
-        const distance = fire.radius * (0.5 + Math.random() * 0.8);
-        const sparkX = fire.x + Math.cos(angle) * distance;
-        const sparkY = fire.y + Math.sin(angle) * distance;
-        
-        ctx.fillStyle = `rgba(255, 150, 0, ${intensity * Math.random()})`;
-        ctx.beginPath();
-        ctx.arc(sparkX, sparkY, 2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    });
-
-    // Enhanced food rendering
-    food.forEach(f => {
-      const energyRatio = f.energy / f.maxEnergy;
-      const alpha = (0.4 + energyRatio * 0.6) * (isNight ? 0.8 : 1);
-      const qualityMultiplier = 0.7 + f.quality * 0.6;
-      
-      if (f.type === 'chumblebush') {
-        ctx.fillStyle = `rgba(34, 139, 34, ${alpha})`;
-        ctx.beginPath();
-        ctx.arc(f.x, f.y, (8 + energyRatio * 6) * qualityMultiplier, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Berry indicators on bush
-        if (f.berryCount > 0) {
-          ctx.fillStyle = `rgba(220, 20, 60, ${alpha * 0.8})`;
-          for (let i = 0; i < Math.min(f.berryCount, 5); i++) {
-            const angle = (i / 5) * Math.PI * 2;
-            const berryX = f.x + Math.cos(angle) * (6 + energyRatio * 4) * qualityMultiplier;
-            const berryY = f.y + Math.sin(angle) * (6 + energyRatio * 4) * qualityMultiplier;
-            ctx.beginPath();
-            ctx.arc(berryX, berryY, 2, 0, Math.PI * 2);
-            ctx.fill();
-          }
-        }
-        
-        ctx.fillStyle = `rgba(0, ${100 + f.quality * 50}, 0, ${alpha})`;
-        const leafCount = Math.floor(3 + f.quality * 2);
-        for (let i = 0; i < leafCount; i++) {
-          const angle = (i / leafCount) * Math.PI * 2;
-          const leafX = f.x + Math.cos(angle) * (4 + energyRatio * 4) * qualityMultiplier;
-          const leafY = f.y + Math.sin(angle) * (4 + energyRatio * 4) * qualityMultiplier;
-          ctx.beginPath();
-          ctx.arc(leafX, leafY, 2 + f.quality, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      } else if (f.type === 'chumbleberry') {
-        ctx.fillStyle = `rgba(220, 20, 60, ${alpha})`;
-        ctx.beginPath();
-        ctx.arc(f.x, f.y, (3 + energyRatio * 3) * qualityMultiplier, 0, Math.PI * 2);
-        ctx.fill();
-      } else if (f.type === 'golden_berry') {
-        const glow = ctx.createRadialGradient(f.x, f.y, 0, f.x, f.y, 20);
-        glow.addColorStop(0, `rgba(255, 215, 0, ${alpha * 0.8})`);
-        glow.addColorStop(1, 'rgba(255, 215, 0, 0)');
-        ctx.fillStyle = glow;
-        ctx.beginPath();
-        ctx.arc(f.x, f.y, 15, 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
-        ctx.beginPath();
-        ctx.arc(f.x, f.y, (4 + energyRatio * 3) * qualityMultiplier, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    });
-
-    // Draw disease particles
-    particlesRef.current.forEach(particle => {
-      const lifeRatio = particle.life / particle.maxLife;
-      const alpha = 1 - lifeRatio;
-      
-      if (particle.type === 'sneeze') {
-        ctx.fillStyle = `rgba(0, 255, 0, ${alpha * 0.6})`;
-        ctx.beginPath();
-        ctx.arc(particle.x, particle.y, 2 * (1 - lifeRatio), 0, Math.PI * 2);
-        ctx.fill();
-      }
-    });
-
-    // Enhanced Bumble rendering with names and vampire features
-    bumbles.filter(b => b.isAlive).forEach(bumble => {
-      const { genetics, x, y, age, maxAge, mateId, gender, stress, energy, maxEnergy, thirst, name } = bumble;
-      const radius = genetics.size * 12;
-      const isSelected = selectedBumble === bumble.id;
-      
-      // Selection highlight with white glow
-      if (isSelected) {
-        const glowGradient = ctx.createRadialGradient(x, y, 0, x, y, radius + 12);
-        glowGradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
-        glowGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-        ctx.fillStyle = glowGradient;
-        ctx.beginPath();
-        ctx.arc(x, y, radius + 12, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      
-      // Age and health effects
-      const ageRatio = age / maxAge;
-      const healthRatio = energy / maxEnergy;
-      const thirstRatio = thirst / 100;
-      const stressEffect = Math.max(0.6, 1 - stress / 100);
-      const nightVisibility = isNight && !genetics.isVampire ? 0.7 : 1.0;
-      const alpha = Math.max(0.5, (healthRatio * stressEffect * (1 - thirstRatio * 0.3)) * (1 - ageRatio * 0.3)) * nightVisibility;
-      
-      // Color with vampire desaturation
-      const hue = genetics.color.hue;
-      const sat = genetics.color.saturation * 80 * stressEffect * (genetics.isVampire ? 0.5 : 1);
-      const light = genetics.color.brightness * 55 * healthRatio * (genetics.isVampire ? 0.6 : 1);
-
-      // Body with vampire darkness
-      ctx.fillStyle = `hsla(${hue}, ${sat}%, ${light}%, ${alpha})`;
-      ctx.beginPath();
-      ctx.arc(x, y, radius, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Vampire aura at night
-      if (genetics.isVampire && isNight) {
-        const vampireGlow = ctx.createRadialGradient(x, y, 0, x, y, radius + 8);
-        vampireGlow.addColorStop(0, 'rgba(150, 0, 150, 0)');
-        vampireGlow.addColorStop(1, `rgba(150, 0, 150, ${genetics.vampireStrength * 0.3})`);
-        ctx.fillStyle = vampireGlow;
-        ctx.beginPath();
-        ctx.arc(x, y, radius + 8, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      
-      // Health shimmer
-      if (healthRatio > 0.8 && stress < 30 && thirst < 30) {
-        ctx.fillStyle = `hsla(${hue}, 60%, 80%, 0.2)`;
-        ctx.beginPath();
-        ctx.arc(x, y, radius * 1.1, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      // Male antenna
-      if (gender === 'male' && genetics.antennaSize > 0) {
-        const antennaLength = genetics.antennaSize * 18;
-        const segments = Math.floor(2 + genetics.antennaSize * 2);
-        
-        ctx.strokeStyle = `hsla(${hue}, ${sat}%, 25%, ${alpha})`;
-        ctx.lineWidth = 2 + genetics.antennaSize;
-        
-        for (let side = 0; side < 2; side++) {
-          const xOffset = side === 0 ? -4 : 4;
-          const baseX = x + xOffset;
-          const baseY = y - radius;
-          
-          for (let i = 0; i < segments; i++) {
-            const segmentStart = i / segments;
-            const segmentEnd = (i + 1) / segments;
-            const curve = Math.sin(segmentEnd * Math.PI) * genetics.antennaSize * 3;
-            
-            ctx.beginPath();
-            ctx.moveTo(
-              baseX + curve * (side === 0 ? -1 : 1), 
-              baseY - antennaLength * segmentStart
-            );
-            ctx.lineTo(
-              baseX + curve * (side === 0 ? -1 : 1), 
-              baseY - antennaLength * segmentEnd
-            );
-            ctx.stroke();
-          }
-          
-          const tipSize = 2 + genetics.antennaSize * 2;
-          ctx.fillStyle = `hsla(${hue + 30}, 70%, 40%, ${alpha})`;
-          ctx.beginPath();
-          ctx.arc(baseX + (genetics.antennaSize * 3) * (side === 0 ? -1 : 1), baseY - antennaLength, tipSize, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-
-      // Enhanced googly eyes
-      const eyeSize = genetics.eyeSize * 5;
-      const eyeOffset = radius * 0.65;
-      const pupilSize = eyeSize * (0.3 + genetics.intelligence * 0.2);
-      
-      // Vampire eyes glow red at night
-      const eyeColor = genetics.isVampire && isNight ? 'rgba(255, 100, 100, 0.8)' : 
-                      stress > 50 ? `rgba(255, ${255 - stress}, ${255 - stress}, ${alpha})` : 
-                      `rgba(255, 255, 255, ${alpha})`;
-      
-      // Left eye
-      ctx.fillStyle = eyeColor;
-      ctx.beginPath();
-      ctx.arc(x - eyeOffset, y - radius * 0.4, eyeSize, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Left pupil
-      const pupilOffsetX = bumble.vx * 0.8 + (bumble.targetFood ? 0.5 : 0);
-      const pupilOffsetY = bumble.vy * 0.8 + (bumble.fleeTime > 0 ? -1 : 0);
-      ctx.fillStyle = genetics.isVampire && isNight ? 'darkred' : 'black';
-      ctx.beginPath();
-      ctx.arc(x - eyeOffset + pupilOffsetX, y - radius * 0.4 + pupilOffsetY, pupilSize, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Right eye
-      ctx.fillStyle = eyeColor;
-      ctx.beginPath();
-      ctx.arc(x + eyeOffset, y - radius * 0.4, eyeSize, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Right pupil
-      ctx.fillStyle = genetics.isVampire && isNight ? 'darkred' : 'black';
-      ctx.beginPath();
-      ctx.arc(x + eyeOffset + pupilOffsetX, y - radius * 0.4 + pupilOffsetY, pupilSize, 0, Math.PI * 2);
-      ctx.fill();
-      
-      // Intelligence sparkle
-      if (genetics.intelligence > 1.2) {
-        ctx.fillStyle = `rgba(255, 255, 150, ${alpha * 0.6})`;
-        ctx.font = `${radius * 0.4}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.fillText('✨', x, y - radius - 5);
-      }
-      
-      // Vampire fangs
-      if (genetics.isVampire) {
-        ctx.fillStyle = 'white';
-        ctx.beginPath();
-        ctx.moveTo(x - 3, y + radius * 0.2);
-        ctx.lineTo(x - 5, y + radius * 0.5);
-        ctx.lineTo(x - 1, y + radius * 0.5);
-        ctx.closePath();
-        ctx.fill();
-        
-        ctx.beginPath();
-        ctx.moveTo(x + 3, y + radius * 0.2);
-        ctx.lineTo(x + 5, y + radius * 0.5);
-        ctx.lineTo(x + 1, y + radius * 0.5);
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      // Mated indicator
-      if (mateId) {
-        const mate = bumbles.find(b => b.id === mateId);
-        const heartSize = radius * 0.5;
-        const heartColor = mate && mate.isAlive ? '#ff4444' : '#666666';
-        ctx.fillStyle = heartColor;
-        ctx.font = `${heartSize}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.fillText('♥', x, y - radius - 12);
-      }
-      
-      // Disease sneeze indicator
-      if (bumble.isDiseasedSneezing) {
-        ctx.fillStyle = 'rgba(0, 255, 0, 0.6)';
-        ctx.font = `${radius * 0.3}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.fillText('🤧', x + radius, y - radius);
-      }
-      
-      // Name display
-      ctx.fillStyle = isNight ? 'rgba(255, 255, 255, 0.9)' : 'rgba(0, 0, 0, 0.8)';
-      ctx.font = `${Math.max(8, radius * 0.4)}px Arial`;
-      ctx.textAlign = 'center';
-      ctx.fillText(name, x, y + radius + 15);
-    });
-
-    // Selected bumble detailed info with better positioning
-    if (selectedBumble) {
-      const bumble = bumbles.find(b => b.id === selectedBumble);
-      if (bumble && bumble.isAlive) {
-        // Calculate info panel position to stay on screen
-        let infoX = bumble.x + 60;
-        let infoY = bumble.y - 40;
-        const infoWidth = 220;
-        const infoHeight = 140;
-        
-        // Adjust if off-screen
-        if (infoX + infoWidth > worldSettings.width) {
-          infoX = bumble.x - infoWidth - 20;
-        }
-        if (infoY < 0) {
-          infoY = 10;
-        }
-        if (infoY + infoHeight > worldSettings.height) {
-          infoY = worldSettings.height - infoHeight - 10;
-        }
-        
-        // Store position for next render
-        setSelectedBumbleInfo({ x: infoX, y: infoY });
-        
-        // Info panel background
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
-        ctx.fillRect(infoX, infoY, infoWidth, infoHeight);
-        ctx.strokeStyle = bumble.genetics.isVampire ? '#8b0000' : 'white';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(infoX, infoY, infoWidth, infoHeight);
-        
-        // Info text
-        ctx.fillStyle = bumble.genetics.isVampire ? '#ffaaaa' : 'white';
-        ctx.font = '11px Arial';
-        ctx.textAlign = 'left';
-        
-        const info = [
-          `${bumble.name} ${bumble.gender === 'male' ? '♂' : '♀'} Gen ${bumble.generation}`,
-          `Age: ${Math.round(bumble.age / 1000)}s`,
-          `Energy: ${Math.round(bumble.energy)}/${Math.round(bumble.maxEnergy)}`,
-          `Thirst: ${Math.round(bumble.thirst)}%`,
-          `Size: ${bumble.genetics.size.toFixed(2)}`,
-          `Speed: ${bumble.genetics.speed.toFixed(2)}`,
-          `Intelligence: ${bumble.genetics.intelligence.toFixed(2)}`,
-          `Stress: ${Math.round(bumble.stress)}%`,
-          `Learning: ${Math.round(bumble.learningExperience)}`,
-          ...(bumble.genetics.isVampire ? [`🧛 Vampire (${(bumble.genetics.vampireStrength * 100).toFixed(0)}%)`] : []),
-          ...(bumble.mateId ? ['💕 Mated'] : [])
-        ];
-        
-        info.forEach((line, i) => {
-          ctx.fillText(line, infoX + 5, infoY + 15 + i * 12);
-        });
-
-        // Health bar
-        const barX = infoX + 5;
-        const barY = infoY + 15 + info.length * 12 + 8;
-        const barWidth = 120;
-        const barHeight = 10;
-        ctx.fillStyle = '#333';
-        ctx.fillRect(barX, barY, barWidth, barHeight);
-        ctx.fillStyle = '#4caf50';
-        const healthRatio = bumble.health / bumble.maxHealth;
-        ctx.fillRect(barX, barY, barWidth * healthRatio, barHeight);
-        ctx.strokeStyle = 'white';
-        ctx.strokeRect(barX, barY, barWidth, barHeight);
-        ctx.fillStyle = 'white';
-        ctx.font = '10px Arial';
-        ctx.fillText(`Health: ${Math.round(bumble.health)} / ${Math.round(bumble.maxHealth)}`, barX, barY + barHeight + 12);
-
-        // Occupation display
-        if (bumble.occupation && bumble.occupation !== 'none') {
-          ctx.fillStyle = '#aaffaa';
-          ctx.font = 'bold 12px Arial';
-          let occLabel = '';
-          if (bumble.occupation === 'doctor') occLabel = '🩺 Doctor';
-          else if (bumble.occupation === 'scientist') occLabel = '🔬 Scientist';
-          else if (bumble.occupation === 'farmer') occLabel = '🌱 Farmer';
-          else if (bumble.occupation === 'gatherer') occLabel = '🍎 Gatherer';
-          else if (bumble.occupation === 'scout') occLabel = '🧭 Scout';
-          else if (bumble.occupation === 'guardian') occLabel = '🛡️ Guardian';
-          else if (bumble.occupation === 'breeder') occLabel = '💞 Breeder';
-          ctx.fillText(occLabel, barX, barY + barHeight + 28);
-        }
-      }
-    }
-  });
-
-  // Animation loop
-  useEffect(() => {
-    if (isRunning && gameStarted) {
-      lastTimeRef.current = performance.now();
-      const animate = () => {
-        updateSimulation();
-        render();
-        animationRef.current = requestAnimationFrame(animate);
-      };
-      animationRef.current = requestAnimationFrame(animate);
-    } else {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-      render();
-    }
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, [isRunning, gameStarted, updateSimulation, render]);
-
   // Canvas interaction
   const handleCanvasClick = (event: React.MouseEvent<HTMLCanvasElement>) => {
     if (!gameStarted) return;
@@ -2179,50 +1990,66 @@ interface Chuddle {
     });
   };
 
-  // Dark mode state
-  const [darkMode, setDarkMode] = useState(false);
-  // Chuddles toggle
-  const [chuddlesEnabled, setChuddlesEnabled] = useState(worldSettings.chuddlesEnabled);
-  // Chuddle state
-
-  // Top-right controls
   const TopRightControls = () => (
     <div className="fixed top-2 right-2 z-50 flex flex-col gap-2 items-end">
       <div className="flex gap-2">
         <Button size="sm" variant="outline" onClick={() => setInteractionMode('add_female')}>Add Female</Button>
         <Button size="sm" variant="outline" onClick={() => setInteractionMode('add_male')}>Add Male</Button>
-        <Button size="sm" variant={darkMode ? 'default' : 'outline'} onClick={() => setDarkMode(d => !d)}>{darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}</Button>
-        <Button size="sm" variant={chuddlesEnabled ? 'default' : 'outline'} onClick={() => setChuddlesEnabled(e => !e)}>{chuddlesEnabled ? 'Chuddles On' : 'Chuddles Off'}</Button>
+        <Button size="sm" variant={worldSettings.darkMode ? 'default' : 'outline'} onClick={() => setWorldSettings(s => ({...s, darkMode: !s.darkMode}))}>{worldSettings.darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}</Button>
+        <Button size="sm" variant={worldSettings.chuddlesEnabled ? 'default' : 'outline'} onClick={() => setWorldSettings(s => ({...s, chuddlesEnabled: !s.chuddlesEnabled}))}>{worldSettings.chuddlesEnabled ? 'Chuddles On' : 'Chuddles Off'}</Button>
       </div>
     </div>
   );
 
   // Chuddle adoption and logic
   useEffect(() => {
-    if (!chuddlesEnabled) return;
+    if (!worldSettings.chuddlesEnabled) return;
     // Bumbles may adopt a Chuddle if they don't have one
     setBumbles(bs => bs.map(b => {
       if (!b.chuddleId && Math.random() < 0.01) {
         // Adopt a new Chuddle
-        const newChuddle = {
+        const newChuddle: Chuddle = {
           id: Math.random().toString(36).slice(2),
+          name: `Cuddle${Math.floor(Math.random() * 1000)}`,
+          genetics: {
+            size: 0.3 + Math.random() * 0.4,
+            agility: 0.5 + Math.random() * 0.5,
+            loyalty: 0.6 + Math.random() * 0.4,
+            cuteness: 0.7 + Math.random() * 0.3,
+            protectiveness: 0.4 + Math.random() * 0.6,
+            healingPower: 0.3 + Math.random() * 0.4,
+            color: {
+              hue: Math.random() * 360,
+              saturation: 0.6 + Math.random() * 0.4,
+              brightness: 0.4 + Math.random() * 0.4
+            }
+          },
           ownerId: b.id,
           x: b.x + 10,
           y: b.y + 10,
+          vx: 0,
+          vy: 0,
+          age: 0,
+          maxAge: CHUDDLE_LIFESPAN,
+          generation: b.generation,
+          isAlive: true,
+          energy: 50,
+          maxEnergy: 50,
+          stress: 0,
+          lastHealing: 0,
           color: '#fff',
           health: 1,
-          stress: 0,
         };
         setChuddles(cs => [...cs, newChuddle]);
         return { ...b, chuddleId: newChuddle.id };
       }
       return b;
     }));
-  }, [bumbles, chuddlesEnabled]);
+  }, [bumbles, worldSettings.chuddlesEnabled]);
 
   // Chuddle follows owner and reduces stress/boosts health
   useEffect(() => {
-    if (!chuddlesEnabled) return;
+    if (!worldSettings.chuddlesEnabled) return;
     setChuddles(cs => cs.map(c => {
       const owner = bumbles.find(b => b.id === c.ownerId);
       if (!owner) return c;
@@ -2248,11 +2075,11 @@ interface Chuddle {
       }
       return b;
     }));
-  }, [bumbles, chuddles, chuddlesEnabled]);
+  }, [bumbles, chuddles, worldSettings.chuddlesEnabled]);
 
   // Chuddle breeding (simple: if two chuddles are close, new chuddle is born)
   useEffect(() => {
-    if (!chuddlesEnabled) return;
+    if (!worldSettings.chuddlesEnabled) return;
     for (let i = 0; i < chuddles.length; i++) {
       for (let j = i + 1; j < chuddles.length; j++) {
         const c1 = chuddles[i], c2 = chuddles[j];
@@ -2260,39 +2087,41 @@ interface Chuddle {
           // New chuddle
           setChuddles(cs => [...cs, {
             id: Math.random().toString(36).slice(2),
+            name: `Cuddle${Math.floor(Math.random() * 1000)}`,
+            genetics: {
+                size: 0.3 + Math.random() * 0.4,
+                agility: 0.5 + Math.random() * 0.5,
+                loyalty: 0.6 + Math.random() * 0.4,
+                cuteness: 0.7 + Math.random() * 0.3,
+                protectiveness: 0.4 + Math.random() * 0.6,
+                healingPower: 0.3 + Math.random() * 0.4,
+                color: {
+                  hue: Math.random() * 360,
+                  saturation: 0.6 + Math.random() * 0.4,
+                  brightness: 0.4 + Math.random() * 0.4
+                }
+            },
             ownerId: c1.ownerId,
             x: (c1.x + c2.x) / 2,
             y: (c1.y + c2.y) / 2,
+            vx: 0,
+            vy: 0,
+            age: 0,
+            maxAge: CHUDDLE_LIFESPAN,
+            generation: 1, // or some other logic
+            isAlive: true,
+            energy: 50,
+            maxEnergy: 50,
+            stress: 0,
+            lastHealing: 0,
             color: '#f8c',
             health: 1,
-            stress: 0,
           }]);
         }
       }
     }
-  }, [chuddles, chuddlesEnabled]);
-    // Draw Chuddles (as small glowing circles near their owner)
-    if (chuddlesEnabled) {
-      chuddles.forEach(c => {
-        ctx.save();
-        ctx.globalAlpha = 0.85;
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, 8, 0, Math.PI * 2);
-        ctx.fillStyle = c.color || '#fff';
-        ctx.shadowColor = '#222';
-        ctx.shadowBlur = 8;
-        ctx.fill();
-        // Eyes
-        ctx.fillStyle = '#111';
-        ctx.beginPath();
-        ctx.arc(c.x - 2, c.y - 1, 1.2, 0, Math.PI * 2);
-        ctx.arc(c.x + 2, c.y - 1, 1.2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      });
-    }
+  }, [chuddles, worldSettings.chuddlesEnabled]);
 
-  // Water wave animation (thin lines)
   const WaterWaves = () => (
     <svg className="absolute left-0 bottom-0 w-full h-8 pointer-events-none" viewBox="0 0 400 32">
       {[0,1,2].map(i => (
@@ -2300,7 +2129,7 @@ interface Chuddle {
           key={i}
           points={Array.from({length: 40}, (_,x) => `${x*10},${20+6*Math.sin((x+i*2)/2)}`).join(' ')}
           fill="none"
-          stroke={darkMode ? '#88f' : '#00f'}
+          stroke={worldSettings.darkMode ? '#88f' : '#00f'}
           strokeWidth="2"
           opacity={0.5+0.2*i}
         />
@@ -2309,7 +2138,7 @@ interface Chuddle {
   );
 
   return (
-    <div className={darkMode ? "min-h-screen bg-neutral-900 text-white p-2 sm:p-4" : "min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-2 sm:p-4"}>
+    <div className={worldSettings.darkMode ? "min-h-screen bg-neutral-900 text-white p-2 sm:p-4" : "min-h-screen bg-gradient-to-br from-blue-50 to-green-50 p-2 sm:p-4"}>
       <TopRightControls />
       <div className="max-w-7xl mx-auto space-y-3 sm:space-y-4">
         {/* Header */}
