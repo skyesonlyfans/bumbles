@@ -1,14 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '../components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Progress } from '../components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../components/ui/collapsible';
 import { Slider } from '../components/ui/slider';
-import clsx from 'clsx';
 import {
-  Play, Pause, RotateCcw, BarChart3, ChevronDown, Heart, Skull, Users, Dna, Clock, Zap, Settings, Apple, Eye, Plus, Minus, Flame, Brain, Shield, Activity, Target, Wind, Droplets, Moon, Sun, Stethoscope, MoonIcon, UserPlus2
+  Play, Pause, RotateCcw, BarChart3, ChevronDown, Heart, Users, Dna, Clock, Zap, Settings, Apple, Eye, Plus, Flame, Brain, Shield, Activity, Target, Wind, Droplets, Moon, Sun
 } from 'lucide-react';
 
 // --- TYPE DEFINITIONS ---
@@ -219,10 +218,6 @@ const FEMALE_NAMES = [
 
 const DEFAULT_CANVAS_WIDTH = 1000;
 const DEFAULT_CANVAS_HEIGHT = 700;
-const MOBILE_CANVAS_WIDTH = 400;
-const MOBILE_CANVAS_HEIGHT = 300;
-const TABLET_CANVAS_WIDTH = 800;
-const TABLET_CANVAS_HEIGHT = 600;
 
 const INITIAL_POPULATION = 4;
 const DEFAULT_MAX_POPULATION = 150;
@@ -246,11 +241,10 @@ function BumblesSimulator() {
   // --- State and refs (order matters for usage) ---
   const [gameStarted, setGameStarted] = useState(false);
   const [showStats, setShowStats] = useState(false);
-  const [showSettings, setShowSettings] = useState(!gameStarted);
   const [simulationSpeed, setSimulationSpeed] = useState(1);
-  const [reproductionFrequency, setReproductionFrequency] = useState(DEFAULT_REPRODUCTION_FREQ); // 1.0 = normal, <1 = less frequent, >1 = more frequent
+  const [reproductionFrequency] = useState(DEFAULT_REPRODUCTION_FREQ); // 1.0 = normal, <1 = less frequent, >1 = more frequent
   const [environmentalFactors, setEnvironmentalFactors] = useState({ temperature: 20, humidity: 50, windSpeed: 5 });
-  const [screenSize, setScreenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
+  const [screenSize] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [worldSettings, setWorldSettings] = useState<WorldSettings>({
     width: DEFAULT_CANVAS_WIDTH,
     height: DEFAULT_CANVAS_HEIGHT,
@@ -272,7 +266,6 @@ function BumblesSimulator() {
   const [water, setWater] = useState<Water[]>([]);
   const [chuddles, setChuddles] = useState<Chuddle[]>([]);
   const [selectedBumble, setSelectedBumble] = useState<string | null>(null);
-  const [selectedBumbleInfo, setSelectedBumbleInfo] = useState<{x: number; y: number} | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [interactionMode, setInteractionMode] = useState<'food' | 'fire' | 'water' | 'select' | 'add_male' | 'add_female'>('select');
   const [stats, setStats] = useState<SimulationStats>({
@@ -314,9 +307,7 @@ function BumblesSimulator() {
     avgLearningExperience: 0,
     nightTime: false
   });
-  // Canvas width/height for rendering
-  const canvasWidth = worldSettings.width;
-  const canvasHeight = worldSettings.height;
+
   // --- Refs ---
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationRef = useRef<number>();
@@ -521,44 +512,6 @@ function BumblesSimulator() {
     };
   }, []);
 
-  // Chuddle creation
-  const createChuddle = useCallback((ownerId: string, generation: number): Chuddle => {
-    const owner = bumbles.find(b => b.id === ownerId);
-    const baseX = owner ? owner.x : Math.random() * worldSettings.width;
-    const baseY = owner ? owner.y : Math.random() * worldSettings.height;
-    
-    return {
-      id: Math.random().toString(36).substr(2, 9),
-      name: `Cuddle${Math.floor(Math.random() * 1000)}`,
-      genetics: {
-        size: 0.3 + Math.random() * 0.4,
-        agility: 0.5 + Math.random() * 0.5,
-        loyalty: 0.6 + Math.random() * 0.4,
-        cuteness: 0.7 + Math.random() * 0.3,
-        protectiveness: 0.4 + Math.random() * 0.6,
-        healingPower: 0.3 + Math.random() * 0.4,
-        color: {
-          hue: Math.random() * 360,
-          saturation: 0.6 + Math.random() * 0.4,
-          brightness: 0.4 + Math.random() * 0.4
-        }
-      },
-      ownerId,
-      x: baseX + (Math.random() - 0.5) * 40,
-      y: baseY + (Math.random() - 0.5) * 40,
-      vx: 0,
-      vy: 0,
-      age: 0,
-      maxAge: CHUDDLE_LIFESPAN,
-      generation,
-      isAlive: true,
-      energy: 50,
-      maxEnergy: 50,
-      stress: 0,
-      lastHealing: 0
-    };
-  }, [bumbles, worldSettings]);
-
   // Fire creation
   const createFire = useCallback((x: number, y: number): Fire => {
     return {
@@ -606,7 +559,6 @@ function BumblesSimulator() {
     setWater(initialWater);
     setFires([]);
     setSelectedBumble(null);
-    setSelectedBumbleInfo(null);
     nightCycleRef.current = 0;
     particlesRef.current = [];
     
@@ -637,7 +589,6 @@ function BumblesSimulator() {
       nightTime: false
     }));
     setGameStarted(true);
-    setShowSettings(false);
   }, [createBumble, createFood, createWater, worldSettings]);
 
   // Distance calculation
@@ -970,7 +921,7 @@ function BumblesSimulator() {
       
       return updatedWater;
     });
-  }, [bumbles, food, fires, water, gameStarted, simulationSpeed, worldSettings, environmentalFactors, createFire, createFood, freeName]);
+  }, [bumbles, food, fires, water, gameStarted, simulationSpeed, worldSettings, environmentalFactors, createFire, createFood, freeName, createBumble, updateMovement, reproduce, findMate, getReproductionCooldown]);
 
   const render = useCallback(() => {
     const canvas = canvasRef.current;
@@ -1351,9 +1302,6 @@ function BumblesSimulator() {
         if (infoY + infoHeight > worldSettings.height) {
           infoY = worldSettings.height - infoHeight - 10;
         }
-        
-        // Store position for next render
-        setSelectedBumbleInfo({ x: infoX, y: infoY });
         
         // Info panel background
         ctx.fillStyle = 'rgba(0, 0, 0, 0.9)';
@@ -1937,14 +1885,12 @@ function BumblesSimulator() {
   const resetSimulation = () => {
     setGameStarted(false);
     setIsRunning(false);
-    setShowSettings(true);
     setBumbles([]);
     setFood([]);
     setFires([]);
     setWater([]);
     setChuddles([]);
     setSelectedBumble(null);
-    setSelectedBumbleInfo(null);
     usedNames.clear();
     nightCycleRef.current = 0;
     particlesRef.current = [];
@@ -2001,126 +1947,126 @@ function BumblesSimulator() {
     </div>
   );
 
-  // Chuddle adoption and logic
-  useEffect(() => {
-    if (!worldSettings.chuddlesEnabled) return;
-    // Bumbles may adopt a Chuddle if they don't have one
-    setBumbles(bs => bs.map(b => {
-      if (!b.chuddleId && Math.random() < 0.01) {
-        // Adopt a new Chuddle
-        const newChuddle: Chuddle = {
-          id: Math.random().toString(36).slice(2),
-          name: `Cuddle${Math.floor(Math.random() * 1000)}`,
-          genetics: {
-            size: 0.3 + Math.random() * 0.4,
-            agility: 0.5 + Math.random() * 0.5,
-            loyalty: 0.6 + Math.random() * 0.4,
-            cuteness: 0.7 + Math.random() * 0.3,
-            protectiveness: 0.4 + Math.random() * 0.6,
-            healingPower: 0.3 + Math.random() * 0.4,
-            color: {
-              hue: Math.random() * 360,
-              saturation: 0.6 + Math.random() * 0.4,
-              brightness: 0.4 + Math.random() * 0.4
-            }
-          },
-          ownerId: b.id,
-          x: b.x + 10,
-          y: b.y + 10,
-          vx: 0,
-          vy: 0,
-          age: 0,
-          maxAge: CHUDDLE_LIFESPAN,
-          generation: b.generation,
-          isAlive: true,
-          energy: 50,
-          maxEnergy: 50,
-          stress: 0,
-          lastHealing: 0,
-          color: '#fff',
-          health: 1,
-        };
-        setChuddles(cs => [...cs, newChuddle]);
-        return { ...b, chuddleId: newChuddle.id };
-      }
-      return b;
-    }));
-  }, [bumbles, worldSettings.chuddlesEnabled]);
+  // // Chuddle adoption and logic
+  // useEffect(() => {
+  //   if (!worldSettings.chuddlesEnabled) return;
+  //   // Bumbles may adopt a Chuddle if they don't have one
+  //   setBumbles(bs => bs.map(b => {
+  //     if (!b.chuddleId && Math.random() < 0.01) {
+  //       // Adopt a new Chuddle
+  //       const newChuddle: Chuddle = {
+  //         id: Math.random().toString(36).slice(2),
+  //         name: `Cuddle${Math.floor(Math.random() * 1000)}`,
+  //         genetics: {
+  //           size: 0.3 + Math.random() * 0.4,
+  //           agility: 0.5 + Math.random() * 0.5,
+  //           loyalty: 0.6 + Math.random() * 0.4,
+  //           cuteness: 0.7 + Math.random() * 0.3,
+  //           protectiveness: 0.4 + Math.random() * 0.6,
+  //           healingPower: 0.3 + Math.random() * 0.4,
+  //           color: {
+  //             hue: Math.random() * 360,
+  //             saturation: 0.6 + Math.random() * 0.4,
+  //             brightness: 0.4 + Math.random() * 0.4
+  //           }
+  //         },
+  //         ownerId: b.id,
+  //         x: b.x + 10,
+  //         y: b.y + 10,
+  //         vx: 0,
+  //         vy: 0,
+  //         age: 0,
+  //         maxAge: CHUDDLE_LIFESPAN,
+  //         generation: b.generation,
+  //         isAlive: true,
+  //         energy: 50,
+  //         maxEnergy: 50,
+  //         stress: 0,
+  //         lastHealing: 0,
+  //         color: '#fff',
+  //         health: 1,
+  //       };
+  //       setChuddles(cs => [...cs, newChuddle]);
+  //       return { ...b, chuddleId: newChuddle.id };
+  //     }
+  //     return b;
+  //   }));
+  // }, [bumbles, worldSettings.chuddlesEnabled]);
 
-  // Chuddle follows owner and reduces stress/boosts health
-  useEffect(() => {
-    if (!worldSettings.chuddlesEnabled) return;
-    setChuddles(cs => cs.map(c => {
-      const owner = bumbles.find(b => b.id === c.ownerId);
-      if (!owner) return c;
-      // Move chuddle toward owner
-      const dx = owner.x - c.x;
-      const dy = owner.y - c.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const speed = 1.5;
-      return {
-        ...c,
-        x: c.x + (dx / (dist || 1)) * speed,
-        y: c.y + (dy / (dist || 1)) * speed,
-      };
-    }));
-    // Chuddle effect: reduce owner's stress and boost health
-    setBumbles(bs => bs.map(b => {
-      if (b.chuddleId && chuddles.find(c => c.id === b.chuddleId)) {
-        return {
-          ...b,
-          stress: Math.max(0, b.stress - 0.5),
-          health: Math.min(b.maxHealth, b.health + 0.2),
-        };
-      }
-      return b;
-    }));
-  }, [bumbles, chuddles, worldSettings.chuddlesEnabled]);
+  // // Chuddle follows owner and reduces stress/boosts health
+  // useEffect(() => {
+  //   if (!worldSettings.chuddlesEnabled) return;
+  //   setChuddles(cs => cs.map(c => {
+  //     const owner = bumbles.find(b => b.id === c.ownerId);
+  //     if (!owner) return c;
+  //     // Move chuddle toward owner
+  //     const dx = owner.x - c.x;
+  //     const dy = owner.y - c.y;
+  //     const dist = Math.sqrt(dx * dx + dy * dy);
+  //     const speed = 1.5;
+  //     return {
+  //       ...c,
+  //       x: c.x + (dx / (dist || 1)) * speed,
+  //       y: c.y + (dy / (dist || 1)) * speed,
+  //     };
+  //   }));
+  //   // Chuddle effect: reduce owner's stress and boost health
+  //   setBumbles(bs => bs.map(b => {
+  //     if (b.chuddleId && chuddles.find(c => c.id === b.chuddleId)) {
+  //       return {
+  //         ...b,
+  //         stress: Math.max(0, b.stress - 0.5),
+  //         health: Math.min(b.maxHealth, b.health + 0.2),
+  //       };
+  //     }
+  //     return b;
+  //   }));
+  // }, [bumbles, chuddles, worldSettings.chuddlesEnabled]);
 
-  // Chuddle breeding (simple: if two chuddles are close, new chuddle is born)
-  useEffect(() => {
-    if (!worldSettings.chuddlesEnabled) return;
-    for (let i = 0; i < chuddles.length; i++) {
-      for (let j = i + 1; j < chuddles.length; j++) {
-        const c1 = chuddles[i], c2 = chuddles[j];
-        if (Math.abs(c1.x - c2.x) < 10 && Math.abs(c1.y - c2.y) < 10 && Math.random() < 0.001) {
-          // New chuddle
-          setChuddles(cs => [...cs, {
-            id: Math.random().toString(36).slice(2),
-            name: `Cuddle${Math.floor(Math.random() * 1000)}`,
-            genetics: {
-                size: 0.3 + Math.random() * 0.4,
-                agility: 0.5 + Math.random() * 0.5,
-                loyalty: 0.6 + Math.random() * 0.4,
-                cuteness: 0.7 + Math.random() * 0.3,
-                protectiveness: 0.4 + Math.random() * 0.6,
-                healingPower: 0.3 + Math.random() * 0.4,
-                color: {
-                  hue: Math.random() * 360,
-                  saturation: 0.6 + Math.random() * 0.4,
-                  brightness: 0.4 + Math.random() * 0.4
-                }
-            },
-            ownerId: c1.ownerId,
-            x: (c1.x + c2.x) / 2,
-            y: (c1.y + c2.y) / 2,
-            vx: 0,
-            vy: 0,
-            age: 0,
-            maxAge: CHUDDLE_LIFESPAN,
-            generation: 1, // or some other logic
-            isAlive: true,
-            energy: 50,
-            maxEnergy: 50,
-            stress: 0,
-            lastHealing: 0,
-            color: '#f8c',
-            health: 1,
-          }]);
-        }
-      }
-    }
-  }, [chuddles, worldSettings.chuddlesEnabled]);
+  // // Chuddle breeding (simple: if two chuddles are close, new chuddle is born)
+  // useEffect(() => {
+  //   if (!worldSettings.chuddlesEnabled) return;
+  //   for (let i = 0; i < chuddles.length; i++) {
+  //     for (let j = i + 1; j < chuddles.length; j++) {
+  //       const c1 = chuddles[i], c2 = chuddles[j];
+  //       if (Math.abs(c1.x - c2.x) < 10 && Math.abs(c1.y - c2.y) < 10 && Math.random() < 0.001) {
+  //         // New chuddle
+  //         setChuddles(cs => [...cs, {
+  //           id: Math.random().toString(36).slice(2),
+  //           name: `Cuddle${Math.floor(Math.random() * 1000)}`,
+  //           genetics: {
+  //               size: 0.3 + Math.random() * 0.4,
+  //               agility: 0.5 + Math.random() * 0.5,
+  //               loyalty: 0.6 + Math.random() * 0.4,
+  //               cuteness: 0.7 + Math.random() * 0.3,
+  //               protectiveness: 0.4 + Math.random() * 0.6,
+  //               healingPower: 0.3 + Math.random() * 0.4,
+  //               color: {
+  //                 hue: Math.random() * 360,
+  //                 saturation: 0.6 + Math.random() * 0.4,
+  //                 brightness: 0.4 + Math.random() * 0.4
+  //               }
+  //           },
+  //           ownerId: c1.ownerId,
+  //           x: (c1.x + c2.x) / 2,
+  //           y: (c1.y + c2.y) / 2,
+  //           vx: 0,
+  //           vy: 0,
+  //           age: 0,
+  //           maxAge: CHUDDLE_LIFESPAN,
+  //           generation: 1, // or some other logic
+  //           isAlive: true,
+  //           energy: 50,
+  //           maxEnergy: 50,
+  //           stress: 0,
+  //           lastHealing: 0,
+  //           color: '#f8c',
+  //           health: 1,
+  //         }]);
+  //       }
+  //     }
+  //   }
+  // }, [chuddles, worldSettings.chuddlesEnabled]);
 
   const WaterWaves = () => (
     <svg className="absolute left-0 bottom-0 w-full h-8 pointer-events-none" viewBox="0 0 400 32">
